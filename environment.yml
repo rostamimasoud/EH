@@ -4,9 +4,9 @@
 #     conda env create -f environment.yml -p ./envs/eh
 #     conda activate ./envs/eh
 #
-# A clean, modern stack avoids the legacy numpy(>=1.24)/scikit-learn np.float
-# incompatibility that the __init__ compat shim only papers over in the parent
-# process (it does not reach joblib/loky subprocess workers).
+# FaIR is intentionally omitted so the climate core is the deterministic two-box
+# forward-Euler solver (bit-reproducible across machines); add it (pip install
+# fair) for the exact matrix-exponential core.
 name: eh
 channels:
   - conda-forge
@@ -18,6 +18,7 @@ dependencies:
   - scikit-learn>=1.4
   - matplotlib>=3.8
   - cartopy>=0.22
+  - regionmask>=0.11
   - shapely>=2.0
   - requests>=2.31
   - pip>=23

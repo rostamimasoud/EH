@@ -1,0 +1,46 @@
+{
+  "rf": {
+    "names": [
+      "NDWI",
+      "Clay_200cm",
+      "Population_Density",
+      "EVI",
+      "Global_Sediment_Thickness",
+      "TRCLM_Tmax",
+      "tmin_trend_2013_2019",
+      "Clay_Thickness",
+      "ppt_trend_2013_2019",
+      "pet_trend_2013_2019",
+      "tmax_trend_2013_2019",
+      "TRCLM_ET",
+      "TRCLM_precp",
+      "TRCLM_RET",
+      "TRCLM_soil"
+    ],
+    "importance": [
+      0.5613967383280132,
+      0.16056919993518148,
+      0.14797457066244313,
+      0.09656462832730747,
+      0.02197557557890927,
+      0.006865105768345988,
+      0.002542640929474938,
+      0.0017390440576170614,
+      0.00037249641270748444,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "cv_r2_heldout": 0.11897012461225842,
+    "cv_r2_with_constituents": 0.9416693144850624,
+    "leakage_r2": 0.822699189872804,
+    "n_train": 19114,
+    "n_test": 10525,
+    "n_features": 15
+  },
+  "note": "Permutation importances of the independent predictors for the observed WHI (tier-ii baseline field); NOT CHS weights.",
+  "source": "derived from ICWHI_P.tif resampled to the 0.5-deg model grid"
+}

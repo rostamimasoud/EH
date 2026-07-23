@@ -1,0 +1,25 @@
+# Prototype runs on these (all already present in the project conda env).
+numpy>=1.26
+scipy>=1.11
+pandas>=2.0
+scikit-learn>=1.3
+matplotlib>=3.7
+# Recommended: FaIR is used as the climate core when importable (the code falls
+# back to an in-house forward-Euler 2-box EBM if it is absent, so this is
+# optional but gives the exact matrix-exponential solver + validated OHC).
+fair>=2.2
+# Recommended: PyCO2SYS solves the full carbonate system for pH/Omega when
+# importable (linear fallback otherwise); used only in the projection/CHS path.
+PyCO2SYS>=1.8
+# Recommended: regionmask supplies the Natural Earth 0.5-deg land mask for the
+# grid (cached after first use; coarse analytic fallback if absent). cartopy is
+# optional and only makes the CHS map prettier (Robinson + coastlines).
+regionmask>=0.9
+#   cartopy            # optional: nicer chs_map_*.pdf (plain pcolormesh otherwise)
+# Real-data validation modules (structural.py, niche.py, stationarity.py, whi.py)
+# read netCDF and GeoTIFF inputs:
+netCDF4>=1.6           # CRU MAT climatology, GISTEMP gridded
+rasterio>=1.3          # gridded WHI + predictor stack (whi.py)
+# Further production swaps named in the proposal (not yet wired in):
+#   blackjax numpyro jax   # vectorised tempered SMC on JAX
+#   xarray pooch SALib

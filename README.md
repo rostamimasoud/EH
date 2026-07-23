@@ -1,63 +1,67 @@
 # EH — Shallow-time Earth Habitability
 
-A reduced-complexity, fully reproducible proof-of-concept that projects
-terrestrial habitability under coupled climate and ocean change, from the
-preindustrial (1750) to 2300 CE.
+A reduced-complexity, fully reproducible pipeline that projects terrestrial
+habitability under coupled climate and ocean change, from the preindustrial
+(1750) to 2300 CE, on a real 0.5° global land grid.
 
-It runs a single seeded pipeline:
+Pipeline:
 
 ```
-real forcing/obs → two-layer energy-balance emulator → tempered SMC
-calibration → six carried climate–ocean variables → tiered Composite
-Hazard Score (CHS) → Habitable Area Fraction (HAF)
+real forcing/obs → two-box energy-balance emulator → tempered SMC calibration
+→ six carried climate–ocean variables → tiered Composite Hazard Score (CHS)
+→ Habitable Area Fraction (HAF)
 ```
 
-on a 0.5° land grid. Every headline number and figure in the manuscript is
-regenerated from public data by `scripts/run_pipeline.py`.
+The tier-(ii) baseline hazard field is a **real gridded Water Hazard Index (WHI)**
+resampled to the model grid (released, redistributable derivative at
+`eh_shallow/released/whi_field_0p5deg.npz`), so the CHS map carries genuine
+emergent geography (subtropical dry belts, continental interiors).
 
 ## Layout
 
 ```
-src/eh_shallow/     Python package (model logic)
-  config.py         constants, grid, calibration windows, priors, RunConfig
-  data.py           GMST (HadCRUT5), OHC (NOAA/NCEI), CO2/ERF, land mask
-  emulator.py       two-layer Geoffroy EBM (exact matrix-exponential solver)
-  smc.py            tempered Sequential Monte Carlo calibration of (ECS, γ)
-  ocean.py          PyCO2SYS carbonate diagnostics (pH, Ω_arag)
-  chs_haf.py        Composite Hazard Score field + Habitable Area Fraction
-  whi.py            water-hazard baseline field + descriptive Random Forest
-  metrics.py        out-of-sample skill + human-climate-niche check
-  pipeline.py       end-to-end orchestration → metrics.json + results.npz
-  figures.py        publication figures (Nature style)
-scripts/            run driver, SLURM job, cluster env setup
-tests/              regression tests (e.g. calibration baseline guard)
-manuscript/         Nature-style main.tex + SI.tex + figures
-environment.yml     pinned reproducible conda environment
+eh_shallow/          the package
+  data.py            HadCRUT5, AR6 ERF, NOAA/NCEI OHC, CO2 pathway (download+cache)
+  emulator.py        two-box EBM (FaIR core if available, else forward-Euler) + chemistry
+  smc.py             tempered Sequential Monte Carlo calibration of (ECS, γ)
+  grid.py            real 0.5° grid, land mask, warming pattern, baseline field, HAF table
+  chs.py             Composite Hazard Score + Habitable Area Fraction
+  whi.py             real gridded WHI baseline + descriptive Random Forest
+  niche.py, cropyield.py, structural.py, stationarity.py   validation modules
+  plots.py           publication figures
+  run.py             end-to-end driver (python -m eh_shallow.run)
+  released/          redistributable WHI field, RF importances, land mask
+scripts/             run driver, SLURM job, cluster env setup
+tests/               shallow-time test suite
+manuscript/          main.tex + SI.tex + references.bib + figures
+environment.yml      pinned reproducible conda environment
 ```
 
 ## Quick start
 
 ```bash
 conda env create -f environment.yml && conda activate eh
-python scripts/run_pipeline.py --fast     # subsampled smoke test (~2-3 min)
-python scripts/run_pipeline.py            # full headline run + figures
-PYTHONPATH=src python -m pytest tests/ -q  # tests
+python -m eh_shallow.run --n-particles 400 --baseline auto --outdir outputs
+PYTHONPATH=. python -m pytest tests/ -q
 ```
 
-Outputs are written to `outputs/` (git-ignored). Override paths via
-`EH_DATA_DIR`, `EH_OUTPUT_DIR`, `EH_FIG_DIR`, `EH_PAPER_FIG_DIR`.
+The land mask and WHI field ship with the code, so a run needs network only to
+fetch the observational series (HadCRUT5, AR6 ERF, NOAA/NCEI OHC), which are then
+cached under `eh_shallow/_cache/`.
 
-## Heavy runs (SLURM)
+## Heavy runs (SLURM, PIK HPC)
 
-`scripts/cluster_setup.sh` builds the conda env; `scripts/slurm_run.sh` submits
-the full-resolution run. See headers in those scripts.
+`scripts/cluster_setup.sh` builds the conda env; `scripts/slurm_run.sh` seeds the
+land-mask cache and submits the full run. Compute nodes are offline, so the
+observational series must be pre-cached on a login node first (the setup script
+does this).
 
 ## Reproducibility
 
-All randomness flows through one seeded NumPy generator (`config.SEED`); a run is
-bit-reproducible. The calibrated run gives ECS = 2.84 K (5–95%: 2.47–3.14),
-out-of-sample GMST skill +0.49 vs persistence, and HAF declining from 0.84
-(preindustrial) to 0.50 by 2100 under SSP2-4.5.
+Deterministic given `--seed`. The calibrated run (seed 0, 400 particles, two-box
+core) gives ECS ≈ 3.69 K (5–95%: 3.03–4.31), out-of-sample GMST skill +0.43 vs
+persistence, and HAF declining from 0.90 (preindustrial) to 0.63 (2100, SSP2-4.5)
+and 0.21 (2100, SSP5-8.5).
 
 ## Author
 

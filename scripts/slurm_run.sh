@@ -4,16 +4,17 @@
 #SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
-#SBATCH --mem=64G
-#SBATCH --time=04:00:00
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=32G
+#SBATCH --time=02:00:00
 #SBATCH --output=/p/projects/climber3/rostami/EH/outputs/slurm-%j.out
 #SBATCH --error=/p/projects/climber3/rostami/EH/outputs/slurm-%j.err
 #
-# Full-resolution EH pipeline run. Submit from a login node:
-#     sbatch scripts/slurm_run.sh
-# Override the SMC ensemble size:  sbatch scripts/slurm_run.sh --particles 800
-set -eo pipefail   # not -u: module/conda init reference unset vars
+# Full eh_shallow run. Run scripts/cluster_setup.sh once first (builds the env,
+# seeds the land mask, and pre-caches the observational series on a login node).
+#     sbatch scripts/slurm_run.sh                       # headline SSP2-4.5
+#     sbatch scripts/slurm_run.sh --n-particles 800     # override
+set -eo pipefail
 
 PROJ=/p/projects/climber3/rostami/EH
 ENV_PREFIX="$PROJ/envs/eh"
@@ -34,15 +35,21 @@ module load anaconda/2025
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$ENV_PREFIX"
 
-# Keep numeric libs from oversubscribing the allocated cores.
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 export OPENBLAS_NUM_THREADS="$OMP_NUM_THREADS"
 export MKL_NUM_THREADS="$OMP_NUM_THREADS"
-export EH_OUTPUT_DIR="$PROJ/outputs"
-# No manuscript tree on the cluster: leave EH_PAPER_FIG_DIR unset so the figure
-# module writes to outputs/figures only (mirroring is skipped when the paper dir
-# is absent or identical to FIG_DIR). Figures are retrieved locally via rsync.
+
+# Ensure the land-mask cache exists (idempotent; setup normally does this).
+python - <<'PY'
+import os, numpy as np
+c = "eh_shallow/_cache/land_mask_720x360.npy"
+if not os.path.exists(c):
+    os.makedirs("eh_shallow/_cache", exist_ok=True)
+    m = np.load("eh_shallow/released/land_mask_0p5deg.npz")["mask"].astype(bool)
+    np.save(c, m); print("[job] seeded land mask")
+PY
 
 echo "[job] $(date) host=$(hostname) cpus=${SLURM_CPUS_PER_TASK:-?} python=$(which python)"
-srun python scripts/run_pipeline.py "$@"
+srun python -m eh_shallow.run --n-particles 400 --baseline auto \
+     --outdir "$PROJ/outputs" "$@"
 echo "[job] $(date) done"
