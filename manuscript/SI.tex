@@ -1,0 +1,149 @@
+% ===========================================================================
+%  Shallow-time Earth Habitability (EH_shallow) -- Supplementary Information
+%  Style matched to EH_perspective/SI.tex.
+%  Compile: pdflatex SI -> bibtex SI -> pdflatex SI -> pdflatex SI
+% ===========================================================================
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\DeclareUnicodeCharacter{202F}{\,}
+\DeclareUnicodeCharacter{00A0}{ }
+\DeclareUnicodeCharacter{2081}{\ensuremath{_1}}
+\DeclareUnicodeCharacter{2082}{\ensuremath{_2}}
+\DeclareUnicodeCharacter{2083}{\ensuremath{_3}}
+\DeclareUnicodeCharacter{03B4}{\ensuremath{\delta}}
+\usepackage{geometry}
+\geometry{a4paper, margin=0.8in}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{lineno}
+\usepackage{float}
+\usepackage[super,sort&compress,numbers]{natbib}
+\IfFileExists{textgreek.sty}{\usepackage{textgreek}}{}
+\providecommand{\doi}[1]{doi:~\href{https://doi.org/#1}{\nolinkurl{#1}}}
+
+\usepackage{xr}
+\externaldocument{main}
+
+\title{\textbf{\Large
+     Supplementary Information: \\
+     A spatially explicit, calibrated proof-of-concept for shallow-time
+     terrestrial habitability under climate and ocean change
+ }}
+\author{Masoud Rostami}
+\date{}
+
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thesection}{S\arabic{section}}
+\renewcommand{\theequation}{S\arabic{equation}}
+\captionsetup{labelfont=bf}
+
+\begin{document}
+\maketitle
+\linenumbers
+
+\section*{Overview of the Supplementary Information}
+This Supplementary Information (SI) accompanies the main text and provides the detailed methods that underpin the shallow-time Earth Habitability (EH) proof-of-concept. The pipeline (\texttt{eh\_shallow}) runs a single seeded chain: observed forcing and observations $\rightarrow$ two-layer energy-balance emulator $\rightarrow$ tempered Sequential Monte Carlo (SMC) calibration $\rightarrow$ six carried climate--ocean variables $\rightarrow$ tiered Composite Hazard Score (CHS) $\rightarrow$ Habitable Area Fraction (HAF), from 1750 to 2300~CE on a $0.5^\circ$ land grid. All randomness is driven by one seeded \texttt{numpy} generator (\texttt{SEED}\,$=0$); a run is bit-reproducible. Table~\ref{tab:headline} lists the headline quantities for the calibrated run reported in the main text (400 particles).
+
+\begin{table}[h]
+\centering
+\caption{Headline quantities from the calibrated run (seed 0, 400 particles).}
+\label{tab:headline}
+\begin{tabular}{ll}
+\toprule
+Quantity & Value \\
+\midrule
+ECS (median; 5--95\%)            & $2.84$\,K ($2.47$--$3.14$) \\
+$\gamma$ (median; 5--95\%)       & $1.16$ ($1.04$--$1.20$)\,W\,m$^{-2}$\,K$^{-1}$ \\
+Out-of-sample RMSE (1981--2020)  & $0.18$\,K \\
+Skill vs.\ persistence           & $+0.49$ \\
+Skill vs.\ linear trend          & $+0.63$ \\
+HAF preindustrial (1750--1800)   & $0.84$ \\
+HAF 2020                         & $0.70$ \\
+HAF 2100 (SSP1-2.6/2-4.5/3-7.0/5-8.5) & $0.66$ / $0.50$ / $0.00$ / $0.00$ \\
+$\Delta T_{2100}$ (SSP1-2.6/2-4.5/3-7.0/5-8.5) & $1.83$ / $2.96$ / $4.35$ / $5.39$\,K \\
+Across-scenario HAF spread (2100) & $0.66$ \\
+Weight-ensemble HAF width (2100, 5--95\%) & $0.08$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{Data sources}
+Global-mean surface temperature (GMST) is the HadCRUT5 global annual summary series\citep{Morice2021}, re-referenced internally to the 1850--1900 baseline. Ocean heat content (OHC) is the NOAA/NCEI 0--2000\,m yearly series\citep{Levitus2012}, converted to zettajoules and referenced to 2005--2014. Atmospheric CO$_2$ and total effective radiative forcing (ERF) are documented reduced constructions: CO$_2$ is a smooth, monotone pathway anchored to the observed 2019 value and the published SSP 2100/2300 concentrations\citep{Meinshausen2020, oneill2017roads}; ERF is $5.35\ln(\mathrm{CO}_2/278)$ plus a non-CO$_2$ greenhouse term and an aerosol-dominated early-industrial term, anchored so the 2019 total matches the AR6 estimate\citep{Forster2021} ($\sim\!2.72$\,W\,m$^{-2}$). Each loader records the provenance actually used and falls back to a clearly flagged synthetic series only if the primary download is unavailable. The land mask is Natural Earth 110\,m physical land rasterised to cell centres on the $0.5^\circ$ grid, with cosine-latitude area weights.
+
+\section*{Two-layer energy-balance emulator}
+For surface and deep-ocean temperature anomalies $(T,T_d)$\citep{Geoffroy2013},
+\begin{align}
+C_s\,\frac{\mathrm{d}T}{\mathrm{d}t} &=
+   \Delta F(t) - \frac{F_{2\times}}{\mathrm{ECS}}\,T - \gamma\,(T-T_d), \\
+C_d\,\frac{\mathrm{d}T_d}{\mathrm{d}t} &= \gamma\,(T-T_d),
+\end{align}
+with $C_s=7.3$, $C_d=106$\,W\,yr\,m$^{-2}$\,K$^{-1}$ and $F_{2\times}=3.93$\,W\,m$^{-2}$. Only ECS and $\gamma$ are free. Writing $x=(T,T_d)^{\!\top}$, the system is $\dot{x}=Ax+bF$; with piecewise-constant annual forcing the exact update is $x_{k+1}=e^{A}x_k + A^{-1}(e^{A}-I)\,b\,F_k$, evaluated by matrix exponential, so the integration introduces no time-stepping error. The net top-of-atmosphere imbalance is $N(t)=\Delta F(t)-(F_{2\times}/\mathrm{ECS})\,T$, and OHC is the ocean's fixed share ($f_{\mathrm{ocean}}=0.71$) of the trapezoidal time-integral of $N$. The sea-surface temperature anomaly is obtained by pattern scaling ($0.85\,T$), and pH and $\Omega_{\mathrm{arag}}$ are diagnosed with PyCO2SYS\citep{Humphreys2022} at fixed total alkalinity from the CO$_2$ pathway and SST.
+
+\section*{Tempered SMC calibration}
+We calibrate $(\mathrm{ECS},\gamma)$ against GMST (1850--1980) and OHC (2005--2020) with 1981--2020 GMST withheld, following the Sequential Monte Carlo sampler of Del Moral et al.\citep{DelMoral2006}. The likelihood is a robust Student-$t$ ($\nu=4$) on the residuals, with structural GMST uncertainty $0.20$\,K and OHC uncertainty $10$\,ZJ. Priors are ECS~$\sim\mathcal{N}(3.0,0.5)$\,K and $\gamma\sim\mathcal{U}(0.3,1.2)$\,W\,m$^{-2}$\,K$^{-1}$. Tempered SMC propagates $N=400$ particles along a 12-step inverse-temperature ladder; systematic resampling fires when the effective sample size drops below $N/2$, followed by two Gaussian random-walk Metropolis rejuvenation moves with a proposal covariance matched to the particle cloud.
+
+\paragraph*{Baseline referencing (critical).}
+The simulated GMST is an anomaly relative to the 1750 initial state, whereas the observations are referenced to 1850--1900. Because the emulator's 1750--1850 warming grows with ECS, comparing the two directly injects a spurious, ECS-dependent offset that \emph{inverts} the likelihood and drives the posterior to the lower ECS bound. We therefore re-reference the simulated GMST to the observations' 1850--1900 baseline before differencing (mirroring the OHC term's 2005--2014 re-reference). A regression test guards this behaviour.
+
+\section*{Composite Hazard Score and Habitable Area Fraction}
+The six carried variables are GMST, atmospheric CO$_2$, SST, OHC, pH, and $\Omega_{\mathrm{arag}}$. Each is standardised to an oriented $z$-score,
+\begin{equation}
+z_m(t) = o_m\,\frac{v_m(t)-\bar v_m^{\,\mathrm{PI}}}{\sigma_m},
+\end{equation}
+where $\bar v_m^{\,\mathrm{PI}}$ is the preindustrial (1750--1800) mean, $\sigma_m$ the full-period standard deviation, and $o_m=\pm1$ orients the variable so larger is more hazardous ($o=-1$ for pH and $\Omega_{\mathrm{arag}}$). The tiered CHS on land cell $c$ is
+\begin{equation}
+\mathrm{CHS}(c,t)=\frac{1}{6}\Big[P(c)\,z_{\mathrm{GMST}}(t)
+ + z_{\mathrm{CO_2}}+z_{\mathrm{SST}}+z_{\mathrm{OHC}}
+ + z_{\mathrm{pH}}+z_{\Omega}\Big] + B(c),
+\end{equation}
+with $P(c)$ the normalised land-warming pattern (tier i), $B(c)$ the observed water-hazard baseline field carrying the emergent spatial hotspots (tier ii), and the ocean/global-mean terms entering spatially uniformly (tier iii). The HAF is the cosine-latitude area-weighted land fraction with $\mathrm{CHS}(c,t)<\tau$, where $\tau$ is the 90th percentile of the pooled preindustrial CHS distribution. The 80th--99th percentile band is reported as a reference sensitivity range (Fig.~\ref{fig:haf_band}).
+
+\section*{Uncertainty propagation}
+Two ensembles quantify uncertainty beyond the scenario choice. (i)~A posterior HAF envelope is obtained by pushing 200 equally weighted posterior $(\mathrm{ECS},\gamma)$ draws through the emulator, CHS, and HAF. (ii)~A weight ensemble draws 500 six-variable weight vectors from a Dirichlet distribution centred on the equal weights $1/6$ and propagates them through the CHS$\rightarrow$HAF map (Fig.~\ref{fig:haf_weight}). At 2100 the weight-ensemble 5--95\% HAF width is $0.08$, an order of magnitude smaller than the across-scenario spread ($0.66$), confirming that neither parametric nor weighting uncertainty rivals the emissions pathway as the control on projected habitability.
+
+\section*{Water-hazard baseline and descriptive Random Forest}
+The tier-ii baseline $B(c)$ is a calibrated stand-in for the gridded observational water-hazard stack (not redistributed here), with the documented geography of elevated hazard in the subtropical dry belts and high latitudes, standardised to zero mean and unit variance over land. A Random-Forest regressor\citep{breiman2001random} trained on independent geographic predictors with $10^\circ$ latitude-band stratified blocking reports the descriptive held-out skill and permutation importances (Fig.~\ref{fig:rf}); these characterise the baseline field and are \emph{not} used to weight the CHS, which uses equal weights.
+
+\section*{Validation and the human-climate niche}
+Out-of-sample GMST skill over 1981--2020 is $+0.49$ against persistence and $+0.63$ against a linear-trend baseline (RMSE $0.18$\,K). As an independent cross-check we compute a temperature-only ``human-climate niche'' fraction (land with mean annual temperature $<29^\circ$C, after Xu et al.\citep{Xu2020}). Under the mild headline scenario the near-unlivable ($>29^\circ$C) land fraction remains small over 2000--2100, so the temperature-only niche series is nearly constant; the composite HAF, by contrast, responds to the full climate--ocean state, illustrating why a multivariate hazard score is required. Under SSP5-8.5 the near-unlivable land fraction reaches $\sim\!2\%$ by 2070.
+
+\section*{Supplementary figures}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{figures/ohc_fit.pdf}
+\caption{Emulator posterior ocean heat content (0--2000\,m) against NOAA/NCEI observations over the 2005--2020 constraint window.}
+\label{fig:ohc}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{figures/haf.pdf}
+\caption{Headline (SSP2-4.5) HAF with the posterior 5--95\% envelope (green) and the 80th--99th percentile reference-threshold band (grey).}
+\label{fig:haf_band}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{figures/haf_weight_ensemble.pdf}
+\caption{HAF under a Dirichlet ensemble of six-variable weights centred on $1/6$, showing the small sensitivity of the HAF to the weighting choice.}
+\label{fig:haf_weight}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{figures/whi_rf_importances.pdf}
+\caption{Descriptive Random-Forest permutation importances for the water-hazard baseline field, with the held-out $R^2$. Illustrative only; not used as CHS weights.}
+\label{fig:rf}
+\end{figure}
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\end{document}
