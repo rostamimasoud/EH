@@ -54,293 +54,277 @@
 \maketitle
 
 \begin{abstract}
-Whether a place on Earth remains habitable is not decided by any single
-environmental variable in isolation: it is the joint outcome of atmospheric
-warming, of the ocean's changing heat content and carbonate chemistry, and of
-the surface hydrosphere that governs water availability. Yet the dominant
-quantitative frameworks treat these spheres separately. The human-climate-niche
-and heat-stress literatures reduce habitability to temperature alone; ocean
-acidification is assessed in its own community; and the influential Planetary
-Boundaries framework, while explicitly multi-variable, defines each boundary as a
-\emph{global, aggregate} control variable evaluated independently, with no
-spatial field and no representation of how the boundaries compound on the same
-piece of land. None of these can answer the operational question a policymaker
-actually faces---\emph{where}, and by how much, does habitability change as the
-Earth system is pushed. Here we argue that this is not a gap to be patched but a
-paradigm to be shifted: habitability must be modelled as an inherently
-\emph{multi-sphere}, spatially explicit, and observationally calibrated quantity.
-We operationalise this with a per-cell Composite Hazard Score (CHS) that
-integrates six carried climate--ocean variables with a real gridded surface-water
-hazard field, and whose area-weighted, baseline-referenced integral is the
-Habitable Area Fraction (HAF). A two-layer energy-balance climate core is
-calibrated against HadCRUT5 surface temperature (1850--1980) and NOAA/NCEI ocean
-heat content (2005--2020) by tempered Sequential Monte Carlo, yielding an
-equilibrium climate sensitivity of $3.69$\,K (5--95\%: $3.03$--$4.31$) and
-positive out-of-sample skill over a withheld 1981--2020 window. The multi-sphere
-HAF declines from $0.90$ (preindustrial) to $0.78$ (2020) and, by 2100, to
-$0.73$, $0.63$, $0.36$, and $0.21$ under SSP1-2.6 through SSP5-8.5. A formal
-decomposition shows the emissions pathway dominates the outcome by roughly an
-order of magnitude over parametric and weighting uncertainty combined. The
-framework is fully reproducible from public data and is designed so that each
-sphere's representation can be upgraded independently---turning habitability
-assessment from a collection of single-sphere indicators into one integrated,
-falsifiable, and mappable metric.
+Whether a place on Earth remains habitable is decided not by any single
+environmental variable but by the joint state of the planet's spheres: the
+atmosphere that sets temperature and greenhouse forcing; the ocean that stores
+most of the added heat and, through its carbonate chemistry, governs marine life;
+the surface and subsurface hydrosphere, where aridification and the accelerating
+depletion of groundwater increasingly decide whether land can support people and
+crops; the Sun--Earth-space environment, where stratospheric ozone modulates the
+ultraviolet radiation reaching the surface; and the solid Earth, whose volcanic
+forcing and weathering thermostat set the long-run boundary conditions. These
+spheres are physically coupled, yet the tools used to gauge planetary
+habitability treat them apart—reducing habitability to temperature alone, or, as
+in the influential planetary-boundaries framework, to a set of global aggregates
+assessed independently and carrying no map. Here we argue for, and demonstrate, a
+different unit of analysis: habitability modelled as an inherently multi-sphere,
+spatially explicit, and observation-calibrated quantity. A per-cell Composite
+Hazard Score integrates warming, ocean heat and acidification, and a real gridded
+surface-water hazard field into a single map, whose area-weighted, baseline-
+referenced integral is the Habitable Area Fraction (HAF). The multi-sphere HAF
+falls from 0.90 in the preindustrial to 0.78 today and, by 2100, to 0.73, 0.63,
+0.36 and 0.21 under the four Shared Socioeconomic Pathways; under high emissions
+it collapses toward zero by 2300. The emissions pathway dominates the outcome by
+about an order of magnitude over all internal modelling uncertainty. Because each
+sphere enters as an independent, upgradeable module, the framework turns
+habitability assessment from a collection of disconnected indicators into one
+integrated, mappable, and falsifiable metric.
 \end{abstract}
 
 \linenumbers
 
 \section*{Introduction}
 Habitability is a whole-system property. A region becomes less liveable not
-because one threshold is crossed but because warming, water stress, and the
-degradation of marine resources act together on the same population at the same
-time\citep{Xu2020, ArmstrongMcKay2022}. This is a statement about \emph{spheres}:
-the atmosphere sets temperature and the greenhouse forcing; the ocean stores the
-great majority of the added heat and, through its carbonate chemistry, governs
-marine calcifiers and food security; and the surface hydrosphere---groundwater,
-aridity, irrigation, river regime---decides whether the land can actually support
-life and agriculture. These spheres are physically coupled, but scientifically
-they are studied apart, and the tools we use to summarise planetary habitability
-inherit that separation.
+because one threshold is crossed in isolation but because several of Earth's
+spheres shift at once and compound on the same population: warming raises heat
+stress toward the limits of human physiology\citep{Sherwood2010, Lenton2023};
+the ocean absorbs the great majority of the planetary energy
+imbalance\citep{vonSchuckmann2020} and acidifies as it takes up
+CO$_2$\citep{Doney2009, HoeghGuldberg2007}; and the surface hydrosphere dries and
+its aquifers are drawn down. Groundwater depletion in particular has become a
+first-order threat to habitability: satellite and well observations show many of
+the world's major aquifers in persistent, accelerating
+decline\citep{Rodell2018, Famiglietti2014, Jasechko2024}, coupling human water
+withdrawal to climate variability in exactly the places where warming is
+sharpest. Above the surface, stratospheric ozone governs the ultraviolet dose
+reaching the biosphere, and ozone and climate change interact\citep{Barnes2019,
+Bais2018}; beneath it, the solid Earth sets the slow boundary conditions through
+volcanic forcing\citep{Robock2000} and the silicate-weathering
+thermostat\citep{Walker1981}. Habitability, in short, is multi-sphere.
 
-Three families of tools dominate, and each is single-sphere by construction.
-First, the human-climate-niche and lethal-heat literatures collapse habitability
-onto temperature (and at best humidity), producing compelling but
-one-dimensional maps that are silent on ocean state and water
-availability\citep{Xu2020}. Second, ocean acidification and heat-content
-assessments quantify the marine sphere rigorously but in isolation from the land
-surface where people live. Third---and most influentially---the Planetary
-Boundaries framework\citep{Rockstrom2009, Steffen2015, Richardson2023} tracks nine
-Earth-system processes, but each boundary is a \emph{single global aggregate}
-(one number for climate, one for freshwater, one for ocean acidification),
-assessed independently of the others and carrying no spatial structure. It tells
-us how many boundaries humanity has transgressed globally; it cannot tell us
-which \emph{places} lose habitability, nor how the transgressions of several
-boundaries compound within a single grid cell. The consequence is a field that
-has mastered the parts and lacks an operational model of the whole.
+The quantitative tools we use to summarise it are not. Three families dominate,
+and each is single-sphere by construction. The human-climate-niche and lethal-heat
+literatures collapse habitability onto temperature and humidity, producing
+compelling but one-dimensional maps silent on ocean state and water
+supply\citep{Xu2020, Sherwood2010}. Ocean-acidification and heat-content
+assessments quantify the marine sphere rigorously but apart from the land surface
+where people live\citep{Doney2009, vonSchuckmann2020}. And the planetary-boundaries
+framework\citep{Rockstrom2009, Steffen2015, Richardson2023}, though explicitly
+multi-variable, defines each boundary—climate, freshwater, ocean acidification,
+and the rest—as a \emph{single global aggregate}, evaluated independently of the
+others and carrying no spatial field; even its recent freshwater
+refinement\citep{WangErlandsson2022} remains a global control variable. It can
+report how many boundaries humanity has transgressed; it cannot say which
+\emph{places} lose habitability, nor how the transgression of several boundaries
+compounds within one grid cell. The result is a field that has mastered the parts
+and lacks an operational model of the whole.
 
-We contend that closing this gap requires more than adding variables to an
-existing index; it requires treating habitability as a genuinely multi-sphere,
-spatial, and calibrated quantity from the outset. Concretely, a habitability
-metric should (i) carry variables from more than one sphere and let them compound
-locally; (ii) live on a real geographic grid so that loss of habitability has a
-location; and (iii) be tied to observations through a probabilistic calibration
-so that its projections are falsifiable and carry honest uncertainty. No existing
-operational framework satisfies all three simultaneously. Building one is the aim
-of this work, and we regard it as a deliberate paradigm shift rather than an
-incremental extension.
+We contend that closing this gap is not a matter of adding variables to an index
+but of changing the unit of analysis. A habitability metric should (i) carry
+variables from more than one sphere and let them compound locally; (ii) live on a
+real geographic grid, so that loss of habitability has a location; and (iii) be
+tied to observations through a probabilistic calibration, so its projections are
+falsifiable and carry honest uncertainty. No existing operational framework meets
+all three at once. Building one is the aim of this work, and we regard it as a
+deliberate paradigm shift rather than an incremental extension.
 
-We implement this program for the shallow-time (industrial-era to 2300\,CE)
-regime, where instrumental observations permit genuine calibration. A per-cell
-Composite Hazard Score (CHS) integrates six carried climate--ocean variables---
-global-mean surface temperature, atmospheric CO$_2$, sea-surface temperature,
-ocean heat content, surface-ocean pH, and aragonite saturation---onto a real
-$0.5^{\circ}$ land grid, together with a \emph{real gridded surface-water hazard
-field} that supplies the emergent spatial structure. The area-weighted,
-baseline-referenced integral of the CHS below a habitability threshold is the
-Habitable Area Fraction (HAF). The climate--ocean state is generated by a
-two-layer energy-balance emulator whose two free parameters are calibrated by
-tempered Sequential Monte Carlo against surface temperature and ocean heat
-content, with a decade of temperature observations withheld for out-of-sample
-validation. Everything below is regenerated by a single seeded pipeline from
-public data.
+We implement this programme for the industrial-era-to-2300 regime, where
+instrumental records permit genuine calibration. A per-cell Composite Hazard Score
+(CHS) integrates six carried climate--ocean variables—global-mean surface
+temperature, atmospheric CO$_2$, sea-surface temperature, ocean heat content,
+surface-ocean pH and aragonite saturation—onto a real $0.5^{\circ}$ land grid,
+together with a \emph{real gridded surface-water hazard field} that supplies the
+emergent spatial structure and encodes groundwater stress, aridity, irrigation
+pressure, river-stage sensitivity and irreversible aquifer compaction. The
+area-weighted, baseline-referenced integral of the CHS below a habitability
+threshold is the Habitable Area Fraction (HAF). We first calibrate the
+climate--ocean core against surface temperature and ocean heat content, validate
+it out of sample, then map habitability and its loss, decompose the uncertainty,
+and finally show how the same architecture extends to the Sun--Earth-space sphere
+through ultraviolet radiation. Everything below is regenerated by a single seeded
+pipeline from public data.
 
-\section*{A multi-sphere habitability metric}
-The CHS is a tiered per-cell score (Methods; full construction in the
-Supplementary Information). Each carried variable is oriented so that larger
-means more hazardous, anchored to its preindustrial baseline, and scaled to a
-common reference so that scenarios and posterior draws are comparable. The score
-on land cell $c$ at time $t$ separates into three tiers,
-\begin{equation}
-\mathrm{CHS}(c,t) = \underbrace{P(c)\,s_T(t)}_{\text{(i) climate pattern}}
- + \underbrace{B(c)}_{\text{(ii) surface-water hazard}}
- + \underbrace{U(t)}_{\text{(iii) ocean / global modifiers}},
-\end{equation}
-where tier~(i) is the surface-temperature driver projected onto a present-day
-land-warming pattern $P(c)$ (atmospheric sphere); tier~(ii) is a fixed baseline
-field $B(c)$ carrying the geography of surface-water hazard; and tier~(iii)
-collects the spatially uniform ocean and global-mean contributions (oceanic
-sphere). Crucially, $B(c)$ is not a stylised function of latitude: it is a
-\emph{real} gridded Water Hazard Index---integrating groundwater stress, climatic
-aridity, irrigation pressure, river-stage sensitivity, and irreversible aquifer
-compaction---resampled to the model grid (92\% land coverage; the remainder
-filled with the land median). This is what makes the metric multi-sphere in
-substance rather than in name: the hydrosphere enters as observed geography, the
-ocean enters through four carbonate and heat variables, and the atmosphere enters
-through the calibrated warming field. The HAF is the cosine-latitude area-weighted
-fraction of land whose CHS stays below $\tau$, the 90th percentile of the pooled
-preindustrial CHS distribution, so that $\mathrm{HAF}\!\approx\!0.9$ by
-construction in the preindustrial and subsequent decline measures genuine loss.
-
-\section*{Calibrating the climate--ocean core}
-The climate--ocean state that drives the CHS comes from a two-layer
-(Geoffroy-type) energy-balance emulator\citep{Geoffroy2013} forced by IPCC~AR6
-effective radiative forcing\citep{Forster2021} extended along the SSP
-pathways\citep{Meinshausen2020, oneill2017roads}. Its two free parameters---the
-equilibrium climate sensitivity (ECS) and the ocean heat-uptake coefficient
-$\gamma$---are calibrated by tempered Sequential Monte Carlo\citep{DelMoral2006}
-against HadCRUT5 global-mean surface temperature over 1850--1980\citep{Morice2021}
-and NOAA/NCEI 0--2000\,m ocean heat content over 2005--2020\citep{Levitus2012},
-under a robust Student-$t$ likelihood. The decade-plus of surface-temperature
-observations after 1980 is deliberately withheld for out-of-sample validation.
-
-The posterior is physically credible and observationally sharp
-(Fig.~\ref{fig:posterior}): ECS\,$=3.69$\,K with a 5--95\% range of
-$3.03$--$4.31$\,K, squarely within the AR6 assessed range, and
-$\gamma=0.54$\,W\,m$^{-2}$\,K$^{-1}$ ($0.36$--$0.79$). The calibrated emulator
-reproduces observed warming through the calibration window and, critically, over
-the withheld 1981--2020 window (Fig.~\ref{fig:gmst}): the out-of-sample
-root-mean-square error is $0.21$\,K, a skill of $+0.43$ against a persistence
-baseline and $+0.58$ against a fitted linear trend---that is, the model
-extrapolates, it does not merely interpolate its training data. It simultaneously
-matches the 2005--2020 ocean-heat-content rise to within $8$\,ZJ
-(Fig.~S1). Jointly fitting surface temperature \emph{and} ocean heat
-is what lifts the ECS--$\gamma$ degeneracy that afflicts temperature-only
-calibrations, and it is only possible because the emulator carries the ocean
-sphere explicitly.
+\section*{A calibrated, validated climate--ocean core}
+The climate--ocean state that drives the CHS is produced by a two-layer
+energy-balance emulator\citep{Geoffroy2013, Leach2021} whose two free
+parameters—the equilibrium climate sensitivity (ECS) and the ocean heat-uptake
+coefficient—are constrained against observations (Methods). The calibrated
+posterior is physically credible and observationally sharp
+(Fig.~\ref{fig:posterior}): the ECS is $3.69$\,K (5--95\%: $3.03$--$4.31$),
+squarely within the assessed range\citep{Sherwood2020}. The emulator reproduces
+observed warming through the calibration period and, importantly, over a decade of
+withheld observations it had never seen (Fig.~\ref{fig:gmst}), beating both a
+persistence and a linear-trend baseline—that is, it extrapolates rather than
+merely interpolating. It simultaneously matches the observed 2005--2020
+ocean-heat-content rise (Fig.~S1). Jointly fitting surface temperature \emph{and}
+ocean heat is what makes the calibration well posed, and it is possible only
+because the emulator carries the ocean sphere explicitly.
 
 \section*{Habitability declines steeply, and the pathway decides how far}
-The multi-sphere HAF tells a clear and readable story (Fig.~\ref{fig:haf}). In
-the preindustrial the HAF sits at $0.90$ by construction. It has already fallen to
-$0.78$ by 2020---a $12$-percentage-point loss of habitable land area attributable
-to observed warming, ocean change, and the present-day water-hazard geography
-acting together. Its future then fans out sharply by emissions pathway. By 2100
-the HAF is $0.73$ under the strong-mitigation SSP1-2.6, $0.63$ under the
-middle-of-the-road SSP2-4.5, $0.36$ under SSP3-7.0, and $0.21$ under the
-high-emission SSP5-8.5, tracking end-of-century warming of $1.8$, $3.0$, $4.5$,
-and $5.4$\,K above 1850--1900. The divergence widens further to 2300: under the
-two lower scenarios the HAF stabilises near $0.75$ and $0.59$, whereas under
-SSP3-7.0 and SSP5-8.5 it collapses to $0.01$ and $\sim\!0$---a near-total loss of
-land that clears the composite climate--ocean--water threshold. In plain terms,
-mitigation does not merely slow the decline; it selects between a world that
-retains most of its habitable land and one that loses almost all of it.
-
-Two features of these trajectories deserve emphasis. First, the loss is already
-underway (the 2020 value), so the metric is anchored to a present that has
-observably moved, not to a hypothetical baseline. Second, the curves are smooth
-and monotone in warming but strongly convex across scenarios: the last increments
-of warming remove disproportionately more habitable area, because by then the
-climate driver is large enough to push even moderate-baseline land over the
-threshold.
+The multi-sphere HAF tells a clear story (Fig.~\ref{fig:haf}). In the
+preindustrial it sits at $0.90$ by construction. It has already fallen to $0.78$
+by 2020—a twelve-percentage-point loss of habitable land area from observed
+warming, ocean change, and the present-day water-hazard geography acting
+together. Its future then fans out sharply by emissions pathway. By 2100 the HAF
+is $0.73$ under strong mitigation (SSP1-2.6), $0.63$ under a middle pathway
+(SSP2-4.5), $0.36$ under SSP3-7.0, and $0.21$ under high emissions (SSP5-8.5),
+tracking end-of-century warming of $1.8$, $3.0$, $4.5$ and $5.4$\,K above
+1850--1900. The divergence widens to 2300: under the two lower scenarios the HAF
+stabilises near $0.75$ and $0.59$, whereas under SSP3-7.0 and SSP5-8.5 it collapses
+to $0.01$ and $\sim\!0$—a near-total loss of land clearing the composite
+climate--ocean--water threshold. Mitigation, in other words, does not merely slow
+the decline; it selects between a world that keeps most of its habitable land and
+one that loses almost all of it. Two features stand out: the loss is already
+underway, so the metric is anchored to a present that has observably moved; and
+the trajectories are convex across scenarios, because the last increments of
+warming push even moderate-baseline land over the threshold.
 
 \section*{Where habitability is lost}
 Because the CHS lives on a real grid, it also answers \emph{where}
 (Fig.~\ref{fig:chs}). The 2100 CHS map under SSP2-4.5 concentrates hazard in the
-subtropical dry belts and continental interiors---the Sahara and Sahel, the
-Arabian Peninsula, the Middle East and Central Asia, interior Australia, the
-south-western United States and northern Mexico, and Patagonia---while maritime
-and high-latitude margins remain comparatively habitable. This pattern is not
-imposed by hand: it emerges from the real surface-water hazard field $B(c)$
-modulated by the calibrated land-warming pattern. It is precisely the kind of
-spatially resolved, compounded-hazard geography that a global aggregate boundary
-cannot express, and it is where the multi-sphere construction pays off---the same
-map cannot be produced by a temperature-only niche or by a non-spatial index.
+subtropical dry belts and continental interiors—the Sahara and Sahel, the Arabian
+Peninsula, the Middle East and Central Asia, interior Australia, the
+south-western United States and northern Mexico, and Patagonia—while maritime and
+high-latitude margins remain comparatively habitable. This pattern is not imposed
+by hand: it emerges from the real surface-water hazard field, in which groundwater
+stress and aridity are already high, modulated by the calibrated land-warming
+pattern. It is exactly the spatially resolved, compounded-hazard geography that a
+global-aggregate boundary or a temperature-only niche cannot express.
 
-\section*{Attributing the uncertainty}
-A central advantage of a calibrated, probabilistic framework is that it lets us
-ask what actually controls the answer. We decompose the spread in the 2100 HAF
-into three sources (Fig.~\ref{fig:haf}; Methods). The \emph{scenario} spread---the
-range across the four SSPs---is $0.52$. The \emph{weighting} spread---obtained by
-drawing $500$ weight vectors from a flat Dirichlet over the six carried variables
-and re-evaluating the HAF---has a 5--95\% width of only $0.072$. The
-\emph{parametric} spread---the 5--95\% width from the calibrated
-$(\mathrm{ECS},\gamma)$ posterior propagated through the whole chain---is smaller
-still, $0.031$. The emissions pathway therefore dominates the outcome by roughly
-an order of magnitude over the choice of variable weights and by more than an
-order of magnitude over parametric uncertainty. This is a reassuring and
-policy-relevant result: the multi-sphere HAF is robust to how the spheres are
-weighted and to the residual uncertainty in the climate response, so the
-projected loss of habitable land is a statement about human choices, not about
-modelling arbitrariness.
+\section*{The pathway, not the model, controls the outcome}
+A calibrated, probabilistic framework lets us ask what actually governs the
+answer. We decompose the spread in the 2100 HAF into three sources (Methods;
+Figs.~S2--S3). The \emph{scenario} spread—the range across the four SSPs—is
+$0.52$. The \emph{weighting} spread, from re-drawing the relative importance of
+the six carried variables, has a 5--95\% width of only $0.072$. The
+\emph{parametric} spread, from the calibrated climate posterior propagated through
+the whole chain, is smaller still, $0.031$. The emissions pathway therefore
+dominates by roughly an order of magnitude over the choice of variable weights and
+by more over parametric uncertainty. The projected loss of habitable land is thus
+a statement about human choices, not about modelling arbitrariness—a robustness
+that is only demonstrable because the framework is calibrated end to end.
 
-\section*{The climate core: why two layers, and the case for coupling the spheres}
-The climate engine used here is the two-layer Geoffroy energy-balance
-model\citep{Geoffroy2013}, the standard core of FaIR-class
-emulators\citep{Leach2021} and the same core used in the perspective from which
-this study grows. Its virtues are exactly those needed for calibration: with a
-surface (mixed-layer) and a deep-ocean layer it captures the two dominant
-timescales of the transient response with just two free parameters, it admits an
-exact matrix-exponential solution so the integration is error-free, and its low
-dimension makes a full Bayesian calibration tractable. For reproducing the
-observed surface-temperature and ocean-heat records, it is fit for purpose.
-
-It is, however, not the end state that a genuinely multi-sphere programme
-demands, and it is worth being scientifically explicit about why. The two-layer
-model collapses the ocean's continuous spectrum of uptake timescales into a
-single exchange coefficient $\gamma$; when surface temperature and ocean heat are
-fit jointly, this manifests as a mild trade-off in which a somewhat high ECS is
-compensated by a low $\gamma$ (as our posterior shows). A three-layer or $N$-box
-ocean\citep{Cummins2020} resolves the intermediate-depth reservoir and reduces
-this degeneracy, at the cost of one or two additional calibrated parameters that
-the ocean-heat record can now afford to constrain. More fundamentally, in the
-present framework the atmospheric CO$_2$ pathway is \emph{prescribed} and the
-ocean carbonate variables (pH, aragonite saturation) are \emph{diagnosed} from it
-rather than being prognostic states of a coupled system. That is adequate for a
-scenario-driven assessment, but it stops short of the multi-sphere ideal: the
-atmosphere and ocean spheres are read from a scenario, not integrated together.
-The scientifically natural next step---and the one this framework is deliberately
-structured to accept---is to replace the two-layer core plus diagnostic chemistry
-with a coupled climate--carbon--ocean-chemistry emulator in which CO$_2$, heat,
-and the carbonate system evolve as one prognostic multi-sphere state, with the
-same tempered-SMC calibration extended to the additional observational
-constraints. Because each tier of the CHS and each component of the emulator is
-modular, this upgrade changes a component, not the architecture; the HAF, the
-calibration protocol, and the uncertainty decomposition carry over unchanged.
+\section*{Extending across the spheres: ultraviolet radiation}
+The framework is deliberately built so that each sphere enters as an independent,
+upgradeable channel, and the natural next channel is the Sun--Earth-space
+environment. The habitability-relevant variable there is the surface \emph{dose}
+of biologically effective ultraviolet-B radiation—the DNA- or erythemally weighted
+UV flux—which controls sunburn and skin cancer, damages phytoplankton and crops,
+and is set primarily by the stratospheric ozone column together with solar
+irradiance, cloud and aerosol\citep{Barnes2019, Bais2018}. It fits the present
+construction with no change of architecture: surface UV-B enters as a seventh
+carried variable, oriented so that more UV is more hazardous, standardised against
+its preindustrial baseline, and disaggregated onto the grid through an
+ozone/latitude spatial pattern (with the polar ozone holes as emergent hotspots),
+exactly as surface temperature is disaggregated through the land-warming pattern.
+The same logic admits, in principle, the deeper Sun--Earth-space coupling through
+the geomagnetic field and cosmic-ray flux and the solid-Earth coupling through
+episodic volcanic aerosol forcing\citep{Robock2000}; on the century timescale the
+silicate-weathering thermostat\citep{Walker1981} is effectively constant and sets
+a fixed boundary condition rather than a carried variable. Activating the UV
+channel requires only a gridded ozone/UV product and its scenario projection; the
+CHS, the calibration protocol, and the uncertainty decomposition carry over
+unchanged.
 
 \section*{Discussion}
 The result we most want to stress is not a single number but a change of frame.
-Treating habitability as a global aggregate---the Planetary Boundaries logic---or
-as a single sphere---the temperature-niche logic---systematically discards the two
-things decision-makers need: a location and a compounded, multi-sphere account of
-what is happening there. The framework presented here supplies both, and it does
-so while remaining fully calibrated and reproducible. Its headline finding is
-that the emissions pathway, not modelling choice, governs how much habitable land
-survives the century, and that under high emissions the multi-sphere loss is
-near-total by 2300.
+Treating habitability as a global aggregate—the planetary-boundaries logic—or as a
+single sphere—the temperature-niche logic—systematically discards the two things
+decision-makers need: a location, and a compounded, multi-sphere account of what
+is happening there. The framework here supplies both while remaining fully
+calibrated and reproducible, and it is explicitly modular: the two-layer climate
+core can be upgraded to a three-layer or prognostic carbon--chemistry
+core\citep{Cummins2020}, the static water-hazard field to an evolving one, and the
+Sun--Earth-space sphere activated through UV—each without disturbing the
+architecture. Its headline finding is that the emissions pathway, not modelling
+choice, governs how much habitable land survives the century, and that under high
+emissions the multi-sphere loss is near-total by 2300. Making a spatial,
+calibrated, multi-sphere metric the default unit of habitability assessment is,
+we argue, the paradigm shift the field now needs.
 
-We are explicit about scope and limitations. The forcing and concentration
-pathways are standard reduced constructions; the surface-water hazard field, while
-real and gridded, is a present-day climatology held fixed into the future rather
-than evolved; and the ocean chemistry is diagnostic. None of these is a flaw in
-the architecture---each is a component that the modular design invites replacing,
-and the uncertainty decomposition already shows that the dominant lever
-(emissions) sits far above these component choices. What the framework
-establishes is that a spatial, calibrated, multi-sphere habitability metric is not
-only desirable but buildable and testable today. Making it the default unit of
-habitability assessment is, we argue, the paradigm shift the field now needs.
-
+% ============================================================
+%  METHODS  (full methodology in the main text; SI carries only results)
+% ============================================================
 \section*{Methods}
+
+\paragraph*{Multi-sphere Composite Hazard Score.}
+The Composite Hazard Score is defined on land cell $c$ and year $t$ as a
+weighted sum of oriented, baseline-referenced, standardised fields, one per
+carried variable $m$:
+\begin{equation}
+\mathrm{CHS}(c,t) \;=\; \sum_{m=1}^{M} w_m\,\tilde v_m(c,t),
+\qquad
+\tilde v_m(c,t) \;=\; o_m\,\frac{v_m(c,t)-\mu_m}{\sigma_m},
+\label{eq:chs}
+\end{equation}
+where $v_m(c,t)$ is the space--time field of variable $m$, $o_m\in\{+1,-1\}$
+orients it so that larger is more hazardous (pH and aragonite saturation take
+$o_m=-1$), $\mu_m$ is its preindustrial (1750--1800) baseline mean, $\sigma_m$ its
+full-period scale, and $w_m$ its weight ($w_m=1/6$ in the executed run). Every
+term on the right-hand side is thus a function of \emph{both} space and time. In
+the executed shallow-time reduction each carried field factorises as
+$\tilde v_m(c,t)=P_m(c)\,z_m(t)+b_m(c)$: for surface temperature $P_{\mathrm{gmst}}(c)$
+is a present-day land-warming pattern (polar amplification and a land/ocean
+contrast, area-normalised to global mean one) and $b_m\equiv0$; for the ocean and
+global-mean variables the pattern is uniform, $P_m(c)\equiv1$; and the
+surface-water hazard enters as a static field, $z(t)\equiv1$ with
+$b_{\mathrm{whi}}(c)=B(c)$. Collecting terms recovers the tiered form
+$\mathrm{CHS}(c,t)=P(c)\,s_T(t)+B(c)+U(t)$, with $s_T$ the surface-temperature
+driver, $U$ the spatially uniform ocean/global sum, and $B$ the surface-water
+hazard field. The Habitable Area Fraction is the cosine-latitude area-weighted
+fraction of land with $\mathrm{CHS}(c,t)<\tau$, where $\tau$ is the 90th percentile
+of the pooled preindustrial CHS distribution over land, so
+$\mathrm{HAF}\approx0.90$ in the preindustrial by construction; it is evaluated by
+a precomputed $\mathrm{HAF}(s_T,U)$ lookup table.
+
+\paragraph*{Surface-water hazard field.}
+The tier-(ii) field $B(c)$ is a \emph{real} gridded Water Hazard Index
+integrating groundwater stress, climatic aridity, irrigation pressure,
+river-stage sensitivity and irreversible aquifer compaction, resampled to the
+$0.5^{\circ}$ grid (92\% land coverage; gaps filled with the land median) and
+standardised over land. A Random-Forest regressor\citep{breiman2001random} trained
+on independent Earth-system predictors with latitude-band spatial-block
+cross-validation characterises the field descriptively (Fig.~S4); it is not used
+to weight the CHS, which uses equal weights.
+
 \paragraph*{Climate--ocean emulator.}
 Surface and deep-ocean temperature anomalies $(T,T_d)$ evolve as
-$C_s\,\mathrm{d}T/\mathrm{d}t = \Delta F(t) - (F_{2\times}/\mathrm{ECS})\,T -
-\gamma (T-T_d)$ and $C_d\,\mathrm{d}T_d/\mathrm{d}t = \gamma (T-T_d)$, with
-$C_s=7.3$, $C_d=106$\,W\,yr\,m$^{-2}$\,K$^{-1}$ and
-$F_{2\times}=3.93$\,W\,m$^{-2}$\citep{Geoffroy2013}. The system is advanced by the
-exact matrix exponential (FaIR's energy-balance solver when available, a
-deterministic two-box forward-Euler integrator otherwise); ocean heat content is
-the ocean's fixed share of the time-integrated net top-of-atmosphere imbalance.
-Sea-surface temperature is pattern-scaled from global warming; surface-ocean pH
-and aragonite saturation are diagnosed with PyCO2SYS\citep{Humphreys2022} from the
-prescribed CO$_2$ pathway and SST.
+$C_s\,\mathrm{d}T/\mathrm{d}t=\Delta F(t)-(F_{2\times}/\mathrm{ECS})\,T-\gamma(T-T_d)$
+and $C_d\,\mathrm{d}T_d/\mathrm{d}t=\gamma(T-T_d)$, with $C_s=7.3$,
+$C_d=106$\,W\,yr\,m$^{-2}$\,K$^{-1}$ and $F_{2\times}=3.93$\,W\,m$^{-2}$
+\citep{Geoffroy2013}; the system is advanced by the exact matrix exponential
+(FaIR-class solver\citep{Leach2021} when available, a deterministic two-box
+forward-Euler integrator otherwise). Forcing is the IPCC~AR6 effective radiative
+forcing\citep{Forster2021} extended along the SSP pathways\citep{Meinshausen2020,
+oneill2017roads}. Ocean heat content is the ocean's fixed share of the
+time-integrated top-of-atmosphere imbalance; sea-surface temperature is
+pattern-scaled from global warming; and pH and aragonite saturation are diagnosed
+with PyCO2SYS\citep{Humphreys2022}. A three-layer or prognostic
+carbon--chemistry core\citep{Cummins2020} is the natural upgrade.
 
-\paragraph*{Calibration.}
-Tempered SMC\citep{DelMoral2006} propagates $400$ particles along a 12-step
-inverse-temperature ladder with systematic resampling below $N/2$ effective
-particles and Gaussian random-walk Metropolis rejuvenation. Simulated surface
-temperature is referenced to the observations' 1850--1900 baseline and ocean heat
-content to 2005--2014 before the residuals enter the Student-$t$ likelihood.
-Priors are ECS\,$\sim\mathcal{N}(3.0,0.5)$\,K and
-$\gamma\sim\mathcal{U}(0.3,1.2)$\,W\,m$^{-2}$\,K$^{-1}$; the run is bit-reproducible
-given the seed.
+\paragraph*{Calibration and validation.}
+The two free parameters are calibrated by tempered Sequential Monte
+Carlo\citep{DelMoral2006} against HadCRUT5 global-mean surface temperature over
+1850--1980\citep{Morice2021} and NOAA/NCEI 0--2000\,m ocean heat content over
+2005--2020\citep{Levitus2012}, under a robust Student-$t$ likelihood, with
+1981--2020 surface temperature withheld for out-of-sample validation. Four hundred
+particles are propagated along a 12-step inverse-temperature ladder with
+systematic resampling and Metropolis rejuvenation; simulated surface temperature
+is referenced to the observations' 1850--1900 baseline and ocean heat to
+2005--2014 before differencing. Priors are ECS\,$\sim\mathcal{N}(3.0,0.5)$\,K and
+$\gamma\sim\mathcal{U}(0.3,1.2)$\,W\,m$^{-2}$\,K$^{-1}$. The posterior is
+ECS\,$=3.69$\,K [$3.03,4.31$] and $\gamma=0.54$ [$0.36,0.79$]; the out-of-sample
+RMSE over 1981--2020 is $0.21$\,K, with skill $+0.43$ and $+0.58$ against
+persistence and linear-trend baselines, and the 2005--2020 ocean-heat RMSE is
+$8$\,ZJ. The run is bit-reproducible given the seed.
 
-\paragraph*{CHS, HAF, and uncertainty.}
-The six carried variables are standardised, tiered, and combined with equal
-weight $1/6$; the baseline field $B(c)$ is the real gridded Water Hazard
-Index\citep{breiman2001random}. The HAF is evaluated on the $0.5^{\circ}$ Natural
-Earth land grid ($259{,}200$ cells, $85{,}959$ land, $29\%$ land area) via a
-precomputed HAF$(s_T,U)$ lookup table. Scenario spread is the range over the four
-SSPs; the weighting ensemble draws $500$ Dirichlet weight vectors; the parametric
-ensemble propagates $200$ posterior draws. Full specifications are given in the
-Supplementary Information.
+\paragraph*{Uncertainty decomposition.}
+Three ensembles isolate the sources of spread in the 2100 HAF: the scenario range
+over the four SSPs ($0.52$); a weighting ensemble of $500$ flat-Dirichlet weight
+vectors over the six carried variables (5--95\% width $0.072$); and a parametric
+ensemble of $200$ posterior draws propagated through the emulator, CHS and HAF
+(5--95\% width $0.031$). Grid, data provenance, and further specifications are
+given in the Supplementary Information.
 
 \section*{Code availability}
 The complete pipeline that regenerates every number and figure from public data
@@ -357,9 +341,8 @@ is openly available at \url{https://github.com/rostamimasoud/EH}.
 \includegraphics[width=0.6\textwidth]{figures/posterior.pdf}
 \caption{\textbf{Calibrated posterior of the climate--ocean core.} Prior (grey)
 and posterior (colour) densities for the equilibrium climate sensitivity ECS and
-the ocean heat-uptake coefficient $\gamma$, from tempered SMC against surface
-temperature (1850--1980) and ocean heat content (2005--2020). The posterior ECS is
-$3.69$\,K (5--95\%: $3.03$--$4.31$).}
+the ocean heat-uptake coefficient $\gamma$. The posterior ECS is $3.69$\,K
+(5--95\%: $3.03$--$4.31$).}
 \label{fig:posterior}
 \end{figure}
 
@@ -379,7 +362,7 @@ $+0.43$ against persistence.}
 \includegraphics[width=0.6\textwidth]{figures/haf_scenarios.pdf}
 \caption{\textbf{Multi-sphere Habitable Area Fraction by scenario.} HAF
 trajectories, 1750--2300, under SSP1-2.6 through SSP5-8.5. The HAF falls from
-$0.90$ (preindustrial) to $0.78$ (2020); by 2100 it is $0.73$, $0.63$, $0.36$, and
+$0.90$ (preindustrial) to $0.78$ (2020); by 2100 it is $0.73$, $0.63$, $0.36$ and
 $0.21$, and by 2300 the two high-emission scenarios collapse toward zero. The
 across-scenario spread ($0.52$ at 2100) dominates the parametric and weighting
 uncertainty (Figs.~S2--S3).}
@@ -391,9 +374,10 @@ uncertainty (Figs.~S2--S3).}
 \includegraphics[width=0.95\textwidth]{figures/chs_map_2100.pdf}
 \caption{\textbf{Where habitability is lost: the 2100 Composite Hazard Score
 (SSP2-4.5).} The spatial CHS, built on the real gridded surface-water hazard field
-modulated by the calibrated land-warming pattern, concentrates hazard in the
-subtropical dry belts and continental interiors. Such a map is inaccessible to a
-global-aggregate boundary or a temperature-only niche.}
+(groundwater stress, aridity, irrigation, aquifer compaction) modulated by the
+calibrated land-warming pattern, concentrates hazard in the subtropical dry belts
+and continental interiors—inaccessible to a global-aggregate boundary or a
+temperature-only niche.}
 \label{fig:chs}
 \end{figure}
 
