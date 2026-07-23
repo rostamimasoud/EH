@@ -1,0 +1,25 @@
+# Reproducible environment for the shallow-time Earth Habitability pipeline.
+#
+# Build on the PIK HPC (after `module load anaconda/2025`):
+#     conda env create -f environment.yml -p ./envs/eh
+#     conda activate ./envs/eh
+#
+# A clean, modern stack avoids the legacy numpy(>=1.24)/scikit-learn np.float
+# incompatibility that the __init__ compat shim only papers over in the parent
+# process (it does not reach joblib/loky subprocess workers).
+name: eh
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy>=1.26,<2.1
+  - scipy>=1.11
+  - pandas>=2.0
+  - scikit-learn>=1.4
+  - matplotlib>=3.8
+  - cartopy>=0.22
+  - shapely>=2.0
+  - requests>=2.31
+  - pip>=23
+  - pip:
+      - PyCO2SYS>=1.8

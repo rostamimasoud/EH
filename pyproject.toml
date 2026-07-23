@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eh-shallow"
+version = "0.1.0"
+description = "Shallow-time Earth Habitability proof-of-concept: reduced climate-ocean pipeline to Habitable Area Fraction"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Masoud Rostami" }]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "cartopy>=0.22",
+    "shapely>=2.0",
+    "requests>=2.31",
+    "PyCO2SYS>=1.8",
+]
+
+[project.scripts]
+eh-run = "eh_shallow.pipeline:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
