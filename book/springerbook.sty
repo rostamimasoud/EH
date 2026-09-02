@@ -1,0 +1,338 @@
+% ============================================================================
+%  springerbook.sty
+%  Springer monograph page style, built on the standard `book` class.
+%
+%  WHY THIS FILE EXISTS
+%  --------------------
+%  Springer distributes svmono.cls only from its own author-resources pages;
+%  it is not on CTAN and is not part of TeX Live. This package reproduces the
+%  Springer monograph metrics and furniture so the book compiles today.
+%
+%  SWAPPING TO THE GENUINE SPRINGER CLASS
+%  --------------------------------------
+%  When svmono.cls is available, put it next to main.tex and change the top of
+%  main.tex from
+%      \documentclass[11pt,twoside]{book}
+%      \usepackage{springerbook}
+%  to
+%      \documentclass[graybox,envcountchap,sectrefs]{svmono}
+%      \usepackage{springerbook}[compat]
+%  The [compat] option below drops everything svmono already provides and keeps
+%  only the citation setup and the helper macros, so no chapter file changes.
+% ============================================================================
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{springerbook}[2026/09/02 Springer monograph style emulation]
+
+\newif\ifsb@compat \sb@compatfalse
+\DeclareOption{compat}{\sb@compattrue}
+\ProcessOptions\relax
+
+% ---------------------------------------------------------------------------
+%  Encoding, language, fonts
+% ---------------------------------------------------------------------------
+\RequirePackage[T1]{fontenc}
+\RequirePackage[utf8]{inputenc}
+
+% Order matters here. amsmath, amssymb and amsthm must all be loaded before
+% newtxmath, which redefines \Bbbk and \openbox and would otherwise clash with
+% them. textcomp is deliberately not loaded: newtxtext loads it with its own
+% options, and loading it first causes an option clash.
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{amsthm}
+
+% Springer books are set in a Times-like serif. newtx gives matching maths.
+\IfFileExists{newtxtext.sty}{%
+  \RequirePackage{newtxtext}%
+  \RequirePackage{newtxmath}%
+}{%
+  \RequirePackage{mathptmx}%
+}
+\RequirePackage[scaled=0.88]{helvet}
+\RequirePackage{courier}
+
+\RequirePackage{microtype}
+
+% Defensive: Unicode characters that survive copy and paste.
+\DeclareUnicodeCharacter{202F}{\,}
+\DeclareUnicodeCharacter{00A0}{ }
+\DeclareUnicodeCharacter{200B}{}
+\DeclareUnicodeCharacter{2081}{\ensuremath{_1}}
+\DeclareUnicodeCharacter{2082}{\ensuremath{_2}}
+\DeclareUnicodeCharacter{2083}{\ensuremath{_3}}
+\DeclareUnicodeCharacter{03B4}{\ensuremath{\delta}}
+\DeclareUnicodeCharacter{03B3}{\ensuremath{\gamma}}
+\DeclareUnicodeCharacter{03A9}{\ensuremath{\Omega}}
+
+% ---------------------------------------------------------------------------
+%  Graphics, tables, floats
+% ---------------------------------------------------------------------------
+\RequirePackage{graphicx}
+\RequirePackage{booktabs}
+\RequirePackage{multirow}
+\RequirePackage{array}
+\RequirePackage{longtable}
+\RequirePackage{xcolor}
+\RequirePackage{float}
+\RequirePackage{enumitem}
+\RequirePackage{makeidx}
+\RequirePackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds,patterns,decorations.pathmorphing}
+\RequirePackage{pgfplots}
+\pgfplotsset{compat=1.16}
+
+\graphicspath{{figures/}{figures/tikz/}}
+
+% ---------------------------------------------------------------------------
+%  Page geometry: Springer 155 x 235 mm monograph
+%  Type area 117.5 x 191 mm, inner margin 19 mm, top margin 19 mm.
+% ---------------------------------------------------------------------------
+\ifsb@compat\else
+  \RequirePackage[
+    paperwidth=155mm, paperheight=235mm,
+    textwidth=117.5mm, textheight=191mm,
+    inner=19mm, top=19mm,
+    headsep=8mm, headheight=14pt,
+    footskip=12mm,
+    twoside
+  ]{geometry}
+\fi
+
+% ---------------------------------------------------------------------------
+%  Running heads
+%  Verso: chapter number and title.  Recto: section title.
+% ---------------------------------------------------------------------------
+\ifsb@compat\else
+  \RequirePackage{fancyhdr}
+  \pagestyle{fancy}
+  \fancyhf{}
+  \renewcommand{\headrulewidth}{0.4pt}
+  \renewcommand{\footrulewidth}{0pt}
+  \fancyhead[LE]{\small\thepage\hspace{2em}\nouppercase{\leftmark}}
+  \fancyhead[RO]{\small\nouppercase{\rightmark}\hspace{2em}\thepage}
+  \fancypagestyle{plain}{%
+    \fancyhf{}%
+    \renewcommand{\headrulewidth}{0pt}%
+    \fancyfoot[C]{\small\thepage}%
+  }
+  \renewcommand{\chaptermark}[1]{\markboth{\thechapter\hspace{1em}#1}{}}
+  \renewcommand{\sectionmark}[1]{\markright{\thesection\hspace{1em}#1}}
+\fi
+
+% ---------------------------------------------------------------------------
+%  Headings: Springer chapter opener and section faces
+% ---------------------------------------------------------------------------
+\ifsb@compat\else
+  \RequirePackage{titlesec}
+
+  \definecolor{sbrule}{gray}{0.55}
+  \definecolor{sbgray}{gray}{0.90}
+
+  \titleformat{\chapter}[display]
+    {\normalfont\sffamily\bfseries}
+    {\fontsize{56}{56}\selectfont\color{sbrule}\thechapter}
+    {6pt}
+    {\Huge\raggedright}
+    [\vspace{4pt}{\color{sbrule}\titlerule[1pt]}]
+  \titlespacing*{\chapter}{0pt}{6pt}{28pt}
+
+  \titleformat{name=\chapter,numberless}[display]
+    {\normalfont\sffamily\bfseries}
+    {}
+    {0pt}
+    {\Huge\raggedright}
+    [\vspace{4pt}{\color{sbrule}\titlerule[1pt]}]
+
+  \titleformat{\section}{\normalfont\sffamily\large\bfseries}{\thesection}{1em}{}
+  \titleformat{\subsection}{\normalfont\sffamily\normalsize\bfseries}{\thesubsection}{1em}{}
+  \titleformat{\subsubsection}{\normalfont\sffamily\normalsize\itshape}{\thesubsubsection}{1em}{}
+  \titlespacing*{\section}{0pt}{16pt plus 3pt minus 2pt}{6pt}
+  \titlespacing*{\subsection}{0pt}{12pt plus 2pt minus 2pt}{4pt}
+
+  \setcounter{secnumdepth}{2}
+  \setcounter{tocdepth}{1}
+\fi
+
+% ---------------------------------------------------------------------------
+%  Captions: Springer sets "Fig. 3.1" and "Table 3.1", small, sans label
+% ---------------------------------------------------------------------------
+\RequirePackage[
+  font=small,
+  labelfont={bf,sf},
+  labelsep=space,
+  justification=raggedright,
+  singlelinecheck=false
+]{caption}
+\RequirePackage{subcaption}
+\renewcommand{\figurename}{Fig.}
+\renewcommand{\tablename}{Table}
+
+\ifsb@compat\else
+  \counterwithin{figure}{chapter}
+  \counterwithin{table}{chapter}
+  \counterwithin{equation}{chapter}
+\fi
+
+% ---------------------------------------------------------------------------
+%  Chapter abstract
+%  Springer opens each chapter with a short abstract set small and indented.
+% ---------------------------------------------------------------------------
+\providecommand{\abstract}{}
+\renewcommand{\abstract}[1]{%
+  \begingroup
+    \small
+    \setlength{\leftskip}{0pt}%
+    \setlength{\parindent}{0pt}%
+    \textbf{\sffamily Abstract}\hspace{0.6em}#1\par
+  \endgroup
+  \vspace{14pt}%
+  \noindent\ignorespaces
+}
+
+% Optional closing line pointing at the key idea of the chapter.
+\newcommand{\chapterkeywords}[1]{%
+  \vspace{6pt}%
+  {\small\noindent\textbf{\sffamily Keywords}\hspace{0.6em}#1\par}%
+  \vspace{14pt}%
+}
+
+% ---------------------------------------------------------------------------
+%  Highlight box (the Springer "graybox")
+% ---------------------------------------------------------------------------
+\RequirePackage[most]{tcolorbox}
+
+\newtcolorbox{svgraybox}[1][]{%
+  colback=sbgray!60,
+  colframe=sbgray!60,
+  boxrule=0pt,
+  arc=0pt,
+  left=8pt, right=8pt, top=8pt, bottom=8pt,
+  breakable,
+  #1
+}
+
+% A titled box for the recurring "in plain words" explanations.
+\newtcolorbox{plainbox}[1]{%
+  enhanced,
+  colback=sbgray!35,
+  colframe=sbrule,
+  boxrule=0.4pt,
+  arc=1pt,
+  left=8pt, right=8pt, top=8pt, bottom=8pt,
+  breakable,
+  fonttitle=\sffamily\bfseries\small,
+  title={#1}
+}
+
+% ---------------------------------------------------------------------------
+%  The multi sphere motif
+%
+%  The thesis of this book is that habitability is a joint property of the
+%  atmosphere, the ocean, the surface hydrosphere and the solid Earth, and that
+%  no single sphere carries it alone. That claim has to be visible on the page
+%  and not only in the introduction, so two devices recur.
+%
+%  \begin{spherebox} ... \end{spherebox}
+%      Closes every chapter. Three or four sentences saying which spheres the
+%      chapter touched, what each contributed, and what would have been missed
+%      had the others been left out. Required in every chapter.
+%
+%  \sphere{atmosphere}
+%      Marks a sphere name on first mention in a section and indexes it, so the
+%      reader can see the four threads running through the whole book.
+% ---------------------------------------------------------------------------
+\definecolor{sbsphere}{RGB}{38,70,83}
+
+\newtcolorbox{spherebox}[1][Across the spheres]{%
+  enhanced,
+  colback=sbsphere!6,
+  colframe=sbsphere,
+  boxrule=0pt,
+  leftrule=2.2pt,
+  arc=0pt,
+  left=9pt, right=9pt, top=8pt, bottom=8pt,
+  breakable,
+  fonttitle=\sffamily\bfseries\small\color{sbsphere},
+  title={#1}
+}
+
+\newcommand{\sphere}[1]{\textsf{#1}\index{#1 (sphere)}}
+
+
+% ---------------------------------------------------------------------------
+%  Theorem-like environments, numbered by chapter
+%  amsthm itself is loaded near the top, before the newtx fonts.
+% ---------------------------------------------------------------------------
+\ifsb@compat\else
+  \newtheoremstyle{springer}%
+    {10pt}{10pt}%
+    {\itshape}{}%
+    {\bfseries\sffamily}{}%
+    {0.6em}{}
+  \theoremstyle{springer}
+  \newtheorem{theorem}{Theorem}[chapter]
+  \newtheorem{definition}[theorem]{Definition}
+  \newtheorem{proposition}[theorem]{Proposition}
+  \newtheorem{remark}[theorem]{Remark}
+  \newtheorem{example}[theorem]{Example}
+\fi
+
+% ---------------------------------------------------------------------------
+%  Citations and hyperlinks
+%
+%  natbib in superscript numeric mode, matching the source manuscript, then the
+%  doi package, which defines \doi so that every DOI written into the .bbl by
+%  BibTeX becomes a live link to doi.org.
+%
+%  Why the doi package instead of a hand rolled \providecommand: some publisher
+%  DOIs contain characters that upset either TeX or the PDF reader, notably the
+%  angle brackets and semicolons in older Wiley and AGU identifiers. doi.sty
+%  changes catcodes around the argument to handle them. Two of the entries in
+%  references.bib carry such characters, so this is load bearing.
+%
+%  doi.sty requires hyperref and loads it itself. It defines \doi with
+%  \newcommand*, so nothing may define \doi before this point.
+%
+%  \doitext and \doiurl are the two documented hooks. The defaults already give
+%  "doi:" and https://doi.org/, which is what we want.
+% ---------------------------------------------------------------------------
+\RequirePackage[super,sort&compress,numbers]{natbib}
+\RequirePackage{doi}
+
+
+% ---------------------------------------------------------------------------
+%  Small helpers used across chapters
+% ---------------------------------------------------------------------------
+\newcommand{\chs}{\ensuremath{\mathrm{CHS}}}
+\newcommand{\haf}{\ensuremath{\mathrm{HAF}}}
+\newcommand{\whi}{\ensuremath{\mathrm{WHI}}}
+\newcommand{\ecs}{\ensuremath{\mathrm{ECS}}}
+\newcommand{\degC}{\ensuremath{^{\circ}}C}
+\newcommand{\Wm}{\ensuremath{\mathrm{W\,m^{-2}}}}
+\newcommand{\kmsq}{\ensuremath{\mathrm{km^{2}}}}
+\newcommand{\kmcu}{\ensuremath{\mathrm{km^{3}}}}
+\newcommand{\Oarag}{\ensuremath{\Omega_{\mathrm{arag}}}}
+
+% Consistent SSP naming without dashes in the prose stream.
+\newcommand{\sspA}{SSP1\,2.6}
+\newcommand{\sspB}{SSP2\,4.5}
+\newcommand{\sspC}{SSP3\,7.0}
+\newcommand{\sspD}{SSP5\,8.5}
+
+% ---------------------------------------------------------------------------
+%  Paragraph shape and float behaviour
+% ---------------------------------------------------------------------------
+\ifsb@compat\else
+  \setlength{\parindent}{15pt}
+  \setlength{\parskip}{0pt}
+  \linespread{1.05}
+  \renewcommand{\topfraction}{0.85}
+  \renewcommand{\bottomfraction}{0.7}
+  \renewcommand{\textfraction}{0.1}
+  \renewcommand{\floatpagefraction}{0.75}
+  \setlength{\emergencystretch}{2em}
+  \sloppy
+\fi
+
+\endinput
