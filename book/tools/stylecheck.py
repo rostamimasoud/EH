@@ -35,7 +35,7 @@ DEFAULT_GLOBS = ["chapters/*.tex", "frontmatter/*.tex", "backmatter/*.tex"]
 # Files exempt from a given rule, with the reason.
 EXEMPT = {
     "frontmatter/acronyms.tex": {1, 3, 7, 8},   # a glossary is a lookup table
-    "frontmatter/titlepage.tex": {7, 8},
+    "frontmatter/titlepage.tex": {1, 7, 8},   # address block, not prose
     "frontmatter/dedication.tex": {7, 8},
     "frontmatter/preface.tex": {8},             # the preface has no spherebox
     "backmatter/glossary.tex": {3, 7, 8},

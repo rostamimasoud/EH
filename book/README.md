@@ -24,11 +24,26 @@ manuscript directory holds prose and nothing else.
   Deliberately distinct from the two column journal style used for the papers,
   so that no figure in the book is a reproduction of a published one.
 
+`figtools/make_extra.py`
+: Recomputes the quantities the stored results archive does not carry, and caches
+  them in one file for the figure code. It reruns the calibration to recover the
+  posterior particle cloud, runs the emulator under every pathway to recover the
+  six carried variables including the ocean chemistry, evaluates the composite
+  hazard field at four dates under two pathways, computes the same field with the
+  water hazard term switched off, and derives the time of emergence maps and the
+  threshold sensitivity curve. Deterministic: same seed, same output.
+
 `figtools/make_figs.py`
-: Renders every data figure in the book from `outputs/results.npz`,
-  `outputs/metrics.json` and the released water hazard field. Same science as
-  the published work, redrawn at book measure with new layouts and colour
-  scales.
+: Renders every data figure in the book, from `outputs/results.npz`,
+  `outputs/metrics.json`, the released water hazard field and the recomputed
+  archive above. Same science as the published work, redrawn at book measure with
+  new layouts and colour scales. Includes a full page composition of the water
+  hazard field with regional detail.
+
+`figures/tikz/`
+: Conceptual diagrams drawn for the book: the column through a single place, the
+  tiered construction of the composite score, recoverable against unrecoverable
+  compaction, and an original rendering of a planetary boundary assessment.
 
 `tools/merge_bib.py`
 : Merges the two source bibliographies, reports key collisions instead of

@@ -1,0 +1,125 @@
+% A column through a single place: the four spheres acting on the same ground.
+%
+% Layout is on a strict three column grid so that no text block can collide:
+%   x -3.5 to -0.4  coupling notes, right aligned
+%   x  0.0 to  3.6  the physical column
+%   x  4.0 to  8.3  per layer descriptions, left aligned
+%   x  8.9 to 12.5  the ocean, as its own panel
+% Every text block is given its own vertical band and an explicit text width.
+\begin{tikzpicture}[
+  font=\footnotesize,
+  note/.style={font=\scriptsize, text=black!62, align=left, inner sep=0pt},
+  rnote/.style={font=\scriptsize, text=black!62, align=right, inner sep=0pt},
+  lbl/.style={font=\scriptsize\sffamily\bfseries, inner sep=0pt},
+  link/.style={-{Stealth[length=4pt,width=3pt]}, line width=0.6pt, black!50},
+]
+
+\definecolor{catm}{HTML}{2E6F95}
+\definecolor{coce}{HTML}{1B7A6E}
+\definecolor{chyd}{HTML}{B07A2B}
+\definecolor{csol}{HTML}{8C4A32}
+\definecolor{ink}{HTML}{3A3A3A}
+
+\def\xa{0}      % column left
+\def\xb{3.6}    % column right
+\def\xd{4.0}    % description left
+\def\tw{3.95cm} % description width
+
+% ================= the column =================
+% atmosphere  6.10 - 7.70
+\fill[catm!10] (\xa,6.10) rectangle (\xb,7.70);
+\draw[catm, line width=0.7pt] (\xa,6.10) rectangle (\xb,7.70);
+\node[lbl, text=catm, anchor=north west] at (0.14,7.58) {atmosphere};
+\foreach \x in {0.5,1.2,1.9,2.6,3.3}{
+  \draw[catm!85, line width=0.5pt, -{Stealth[length=2.6pt,width=2.2pt]}]
+    (\x,6.85) -- (\x,6.25);
+}
+
+% land surface  5.80 - 6.10
+\fill[black!13] (\xa,5.80) rectangle (\xb,6.10);
+\node[note, anchor=west] at (0.14,5.95) {land surface};
+
+% unsaturated zone  4.60 - 5.80
+\fill[chyd!6] (\xa,4.60) rectangle (\xb,5.80);
+
+% water table
+\draw[chyd, line width=0.9pt, dashed] (\xa,4.60) -- (\xb,4.60);
+\draw[chyd, -{Stealth[length=3.2pt,width=2.4pt]}, line width=0.7pt]
+  (2.9,4.52) -- (2.9,4.12);
+
+% well
+\draw[black!55, line width=0.55pt] (0.85,6.10) -- (0.85,3.05);
+\draw[black!55, line width=0.55pt] (0.97,6.10) -- (0.97,3.05);
+\node[note, anchor=west] at (1.10,5.35) {well};
+
+% aquifer sand  3.00 - 4.60
+\fill[chyd!17] (\xa,3.00) rectangle (\xb,4.60);
+\node[lbl, text=chyd!72!black, anchor=north west] at (0.14,4.48) {hydrosphere};
+
+% aquitard clay  1.50 - 3.00
+\fill[csol!22] (\xa,1.50) rectangle (\xb,3.00);
+\draw[csol, line width=0.7pt] (\xa,1.50) rectangle (\xb,3.00);
+\foreach \y in {1.72,1.97,2.22,2.47,2.72}{
+  \draw[csol!50, line width=0.32pt] (0.08,\y) -- (3.52,\y);
+}
+\node[lbl, text=csol, anchor=north west] at (0.14,2.90) {solid Earth};
+\draw[csol, -{Stealth[length=3.2pt,width=2.4pt]}, line width=0.7pt]
+  (3.15,3.00) -- (3.15,2.55);
+\draw[csol, -{Stealth[length=3.2pt,width=2.4pt]}, line width=0.7pt]
+  (3.15,1.50) -- (3.15,1.95);
+
+% basement  1.15 - 1.50
+\fill[black!15] (\xa,1.15) rectangle (\xb,1.50);
+
+% ================= descriptions, one per band =================
+\node[note, anchor=west, text width=\tw] at (\xd,6.90)
+  {warming is concentrated in the months before the monsoon, when outdoor work
+   is already hardest};
+\node[note, anchor=west, text width=\tw] at (\xd,4.72)
+  {the water table falls as pumping outpaces recharge};
+\node[note, anchor=west, text width=\tw] at (\xd,3.75)
+  {aquifer sand gives up water readily and is what wells draw from};
+\node[note, anchor=west, text width=\tw] at (\xd,2.25)
+  {clay compacts permanently once loaded past what it has carried before, and
+   the pore space does not return};
+
+% ================= ocean panel =================
+\def\ox{8.90}
+\def\oy{12.50}
+\fill[coce!11] (\ox,1.15) rectangle (\oy,7.70);
+\draw[coce, line width=0.7pt] (\ox,1.15) rectangle (\oy,7.70);
+\node[lbl, text=coce, anchor=north west] at (9.04,7.58) {ocean};
+\node[note, anchor=north west, text width=3.3cm] at (9.04,7.15)
+  {holds most of the added energy, so it holds the commitment};
+\node[note, anchor=north west, text width=3.3cm] at (9.04,5.55)
+  {surface chemistry is shifting as carbon dioxide dissolves};
+\foreach \y in {1.45,1.85,2.25,2.65}{
+  \draw[coce!55, line width=0.4pt, decorate,
+        decoration={snake, amplitude=0.5pt, segment length=5pt}]
+    (9.06,\y) -- (12.34,\y);
+}
+\node[note, anchor=north west, text width=3.3cm] at (9.04,4.05)
+  {reaches the land through the monsoon, over decades};
+
+% monsoon arrow, well clear of both boxes
+\draw[link, coce] (\ox,7.05) .. controls (6.9,7.95) and (5.2,8.05) ..
+  (\xb-0.4,7.85);
+\node[note, text=coce!80!black, anchor=south] at (6.3,8.10) {monsoon};
+
+% ================= couplings, in the left margin =================
+\draw[link] (-0.30,6.60) .. controls (-1.15,6.30) and (-1.15,5.30) ..
+  (-0.30,4.85);
+\node[rnote, anchor=east, text width=2.5cm] at (-1.35,5.72)
+  {heat raises the demand for irrigation};
+
+\draw[link] (-0.30,4.35) .. controls (-1.15,4.05) and (-1.15,3.05) ..
+  (-0.30,2.60);
+\node[rnote, anchor=east, text width=2.5cm] at (-1.35,3.48)
+  {drawdown transfers load onto the clay};
+
+\draw[link] (-0.30,2.10) .. controls (-1.60,1.30) and (-1.60,6.90) ..
+  (-0.30,6.20);
+\node[rnote, anchor=east, text width=2.5cm] at (-1.35,1.55)
+  {lost storage removes the drought buffer};
+
+\end{tikzpicture}

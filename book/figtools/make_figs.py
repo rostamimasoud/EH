@@ -38,6 +38,7 @@ RESULTS = os.path.join(ROOT, "sources", "EH", "outputs", "results.npz")
 METRICS = os.path.join(ROOT, "sources", "EH", "outputs", "metrics.json")
 WHI = os.path.join(ROOT, "sources", "EH", "eh_shallow", "released",
                    "whi_field_0p5deg.npz")
+EXTRA = os.path.join(BOOK, "figures", "book_extra.npz")
 
 _cache = {}
 
@@ -59,6 +60,16 @@ def whi_field():
     if "w" not in _cache:
         _cache["w"] = np.load(WHI)
     return _cache["w"]
+
+
+def extra():
+    """The recomputed archive. Produced by make_extra.py; see its docstring."""
+    if "x" not in _cache:
+        if not os.path.exists(EXTRA):
+            raise SystemExit(
+                "figures/book_extra.npz is missing. Run make_extra.py first.")
+        _cache["x"] = np.load(EXTRA, allow_pickle=True)
+    return _cache["x"]
 
 
 def _band(ax, x, ens, colour, label=None, lw=1.3):
@@ -169,12 +180,12 @@ def loss_bars(path):
     fig, ax = bs.figure(ratio=0.52)
     ypos = np.arange(len(keys))[::-1]
     for i, key in zip(ypos, keys):
-        extra = c["by_scenario_2100"][key]["additional_loss_2020_2100_mkm2"]
+        addl = c["by_scenario_2100"][key]["additional_loss_2020_2100_mkm2"]
         ax.barh(i, committed, color="0.55", height=0.62,
                 edgecolor="white", linewidth=0.6)
-        ax.barh(i, extra, left=committed, color=bs.SSP[key], height=0.62,
+        ax.barh(i, addl, left=committed, color=bs.SSP[key], height=0.62,
                 edgecolor="white", linewidth=0.6)
-        ax.text(committed + extra + 1.5, i, "%.0f" % (committed + extra),
+        ax.text(committed + addl + 1.5, i, "%.0f" % (committed + addl),
                 va="center", fontsize=6.8, color=bs.RULE)
 
     ax.set_yticks(ypos)
@@ -223,43 +234,52 @@ def whi_map(path):
 
 
 def weights(path):
-    """How four principled weighting schemes distribute weight, and what it
-    does to the answer. Book layout: schemes as grouped rows, not a strip."""
+    """How four principled schemes distribute weight, and what it does to the
+    answer. Horizontal bars: the variable names are too long to sit under a
+    narrow book column without colliding."""
     m = metrics()["objective_weights"]
     order = ["gmst", "co2", "sst", "ohc", "ph", "omega"]
-    names = ["surface\ntemperature", "carbon\ndioxide", "sea surface\ntemperature",
-             "ocean heat\ncontent", "ocean\npH", "aragonite\nsaturation"]
+    names = ["surface temperature", "carbon dioxide", "sea surface temperature",
+             "ocean heat content", "ocean pH", "aragonite saturation"]
     schemes = ["equal", "critic", "entropy", "pca"]
-    labels = ["equal", "CRITIC", "entropy", "principal\ncomponent"]
+    labels = ["equal", "CRITIC", "entropy", "principal component"]
     colours = ["0.62", bs.SPHERE["ocean"], bs.SPHERE["atmosphere"],
                bs.SPHERE["hydrosphere"]]
 
     fig, (ax, bx) = plt.subplots(
-        1, 2, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 0.46),
-        gridspec_kw={"width_ratios": [2.5, 1.0], "wspace": 0.45})
+        2, 1, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 0.92),
+        gridspec_kw={"height_ratios": [2.6, 1.0], "hspace": 0.42})
 
-    x = np.arange(len(order))
-    width = 0.2
+    y = np.arange(len(order))[::-1]
+    height = 0.19
     for j, (scheme, colour) in enumerate(zip(schemes, colours)):
         vals = [m["weights"][scheme][k] for k in order]
-        ax.bar(x + (j - 1.5) * width, vals, width * 0.92, color=colour,
-               label=labels[j].replace("\n", " "), edgecolor="none")
-    ax.axhline(1 / 6.0, color=bs.RULE, lw=0.5, ls=(0, (2, 2)))
-    ax.text(5.42, 1 / 6.0 + 0.012, "equal share", fontsize=6, color=bs.RULE,
-            ha="right")
-    ax.set_xticks(x)
-    ax.set_xticklabels(names, fontsize=6)
-    ax.set_ylabel("weight")
-    ax.set_ylim(0, 0.45)
-    ax.legend(fontsize=6, loc="upper left", ncol=2, handlelength=1.1)
+        ax.barh(y + (1.5 - j) * height, vals, height * 0.92, color=colour,
+                label=labels[j], edgecolor="none")
+    ax.axvline(1 / 6.0, color=bs.RULE, lw=0.6, ls=(0, (2, 2)))
+    ax.text(1 / 6.0 + 0.006, y[0] + 0.44, "equal share", fontsize=6,
+            color=bs.RULE)
+    ax.set_yticks(y)
+    ax.set_yticklabels(names, fontsize=6.6)
+    ax.set_xlabel("weight")
+    ax.set_xlim(0, 0.44)
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.legend(fontsize=6.2, loc="lower right", ncol=2, handlelength=1.0,
+              columnspacing=1.0)
 
     haf = [m["haf_2100_by_method"][s] for s in schemes]
-    bx.bar(np.arange(4), haf, 0.62, color=colours, edgecolor="none")
-    bx.set_xticks(np.arange(4))
-    bx.set_xticklabels(labels, fontsize=6)
-    bx.set_ylim(0.5, 0.72)
-    bx.set_ylabel("habitable area fraction, 2100", fontsize=7)
-    bx.yaxis.set_major_locator(MultipleLocator(0.05))
+    yb = np.arange(4)[::-1]
+    bx.barh(yb, haf, 0.6, color=colours, edgecolor="none")
+    for yy, v in zip(yb, haf):
+        bx.text(v + 0.004, yy, "%.3f" % v, va="center", fontsize=6.4,
+                color=bs.RULE)
+    bx.set_yticks(yb)
+    bx.set_yticklabels(labels, fontsize=6.6)
+    bx.set_xlim(0.55, 0.72)
+    bx.set_xlabel("habitable area fraction at 2100")
+    bx.spines["left"].set_visible(False)
+    bx.tick_params(axis="y", length=0)
     return bs.finish(fig, path)
 
 
@@ -295,15 +315,564 @@ def ohc_fit(path):
     return bs.finish(fig, path)
 
 
+
+# ---------------------------------------------------------------------------
+# Figures built from the recomputed archive
+# ---------------------------------------------------------------------------
+
+def _paths_axes(ax, years, getter, xlim=(1750, 2300), label_x=2300):
+    for key in ("ssp126", "ssp245", "ssp370", "ssp585"):
+        y = getter(key)
+        ax.plot(years, y, color=bs.SSP[key], lw=1.2)
+        ax.annotate(bs.SSP_LABEL[key], (label_x, y[-1]),
+                    textcoords="offset points", xytext=(4, -2),
+                    fontsize=6.3, color=bs.SSP[key], va="center")
+    ax.axvline(2020, color=bs.RULE, lw=0.5, ls=(0, (4, 3)))
+    ax.set_xlim(*xlim)
+    ax.set_xlabel("year")
+
+
+def pattern_map(path):
+    """The land warming pattern: how much faster each place warms."""
+    x = extra()
+    field = x["pattern"].astype(float)
+    fig, ax = bs.figure(ratio=0.50)
+    finite = field[np.isfinite(field)]
+    mesh = _map_axes(ax, x["lon"], x["lat"], field, "YlOrBr",
+                     float(np.nanmin(finite)), float(np.nanmax(finite)))
+    cbar = fig.colorbar(mesh, ax=ax, shrink=0.82, pad=0.02, aspect=18)
+    cbar.set_label("warming relative to the global mean", fontsize=7)
+    cbar.ax.tick_params(labelsize=6.5, width=0.5)
+    cbar.outline.set_linewidth(0.5)
+    return bs.finish(fig, path)
+
+
+def gmst_paths(path):
+    """Surface warming under each pathway."""
+    x = extra()
+    years = x["years"]
+    fig, ax = bs.figure(ratio=0.55)
+    _paths_axes(ax, years, lambda k: x["gmst_" + k])
+    ax.set_ylabel("warming (K)")
+    fig.subplots_adjust(right=0.82)
+    return bs.finish(fig, path)
+
+
+def co2_paths(path):
+    """Atmospheric carbon dioxide under each pathway."""
+    x = extra()
+    fig, ax = bs.figure(ratio=0.55)
+    _paths_axes(ax, x["years"], lambda k: x["co2_" + k])
+    ax.set_ylabel("carbon dioxide (parts per million)")
+    fig.subplots_adjust(right=0.82)
+    return bs.finish(fig, path)
+
+
+def ocean_heat_paths(path):
+    """Heat accumulating in the upper ocean under each pathway."""
+    x = extra()
+    fig, ax = bs.figure(ratio=0.55)
+    _paths_axes(ax, x["years"], lambda k: x["ohc_" + k])
+    ax.set_ylabel("ocean heat content (ZJ)")
+    fig.subplots_adjust(right=0.82)
+    return bs.finish(fig, path)
+
+
+def carbonate_paths(path):
+    """Surface ocean chemistry: acidity and aragonite saturation."""
+    x = extra()
+    years = x["years"]
+    fig, (ax, bx) = plt.subplots(
+        2, 1, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 0.80), sharex=True,
+        gridspec_kw={"hspace": 0.18})
+
+    for key in ("ssp126", "ssp245", "ssp370", "ssp585"):
+        ax.plot(years, x["ph_" + key], color=bs.SSP[key], lw=1.2)
+        bx.plot(years, x["omega_" + key], color=bs.SSP[key], lw=1.2)
+        bx.annotate(bs.SSP_LABEL[key], (2300, x["omega_" + key][-1]),
+                    textcoords="offset points", xytext=(4, -2),
+                    fontsize=6.3, color=bs.SSP[key], va="center")
+
+    bx.axhline(1.0, color=bs.RULE, lw=0.7, ls=(0, (3, 2)))
+    bx.text(1770, 1.12, "aragonite dissolves below this line",
+            fontsize=6.3, color=bs.RULE)
+    for a in (ax, bx):
+        a.axvline(2020, color=bs.RULE, lw=0.5, ls=(0, (4, 3)))
+        a.set_xlim(1750, 2300)
+    ax.set_ylabel("surface ocean pH")
+    bx.set_ylabel("aragonite saturation")
+    bx.set_xlabel("year")
+    fig.subplots_adjust(right=0.82)
+    return bs.finish(fig, path)
+
+
+def whi_distribution(path):
+    """How water hazard is distributed over land. The tail is the point."""
+    x = extra()
+    raw = x["whi_raw"].astype(float)
+    land = x["land2d"].astype(bool)
+    vals = raw[land & np.isfinite(raw)]
+
+    fig, ax = bs.figure(ratio=0.50)
+    ax.hist(vals, bins=60, color=bs.SPHERE["hydrosphere"], alpha=0.85,
+            edgecolor="white", linewidth=0.2)
+    med = float(np.median(vals))
+    p95 = float(np.percentile(vals, 95))
+    ax.axvline(med, color=bs.RULE, lw=0.9)
+    ax.axvline(p95, color="#A8402F", lw=0.9, ls=(0, (3, 2)))
+    ax.annotate("median", (med, ax.get_ylim()[1] * 0.92),
+                textcoords="offset points", xytext=(4, 0), fontsize=6.5,
+                color=bs.RULE)
+    ax.annotate("95th percentile", (p95, ax.get_ylim()[1] * 0.75),
+                textcoords="offset points", xytext=(4, 0), fontsize=6.5,
+                color="#A8402F")
+    ax.set_xlabel("water hazard index")
+    ax.set_ylabel("number of land cells")
+    return bs.finish(fig, path)
+
+
+def whi_zonal(path):
+    """Water hazard against latitude, with the spread inside each band.
+
+    The point of the figure is that the spread within a latitude band is far
+    larger than the variation between bands, which is why a zonal or global
+    summary of water hazard conveys almost nothing.
+    """
+    x = extra()
+    raw = x["whi_raw"].astype(float)
+    land = x["land2d"].astype(bool)
+    lat = x["lat"]
+
+    edges = np.arange(-60, 86, 5)
+    mids, med, lo, hi = [], [], [], []
+    for a, b in zip(edges[:-1], edges[1:]):
+        sel = (lat >= a) & (lat < b)
+        if not sel.any():
+            continue
+        block = raw[sel][land[sel]]
+        block = block[np.isfinite(block)]
+        if block.size < 20:
+            continue
+        mids.append(0.5 * (a + b))
+        med.append(np.median(block))
+        lo.append(np.percentile(block, 10))
+        hi.append(np.percentile(block, 90))
+
+    fig, ax = bs.figure(ratio=0.62)
+    ax.fill_betweenx(mids, lo, hi, color=bs.SPHERE["hydrosphere"], alpha=0.22,
+                     linewidth=0)
+    ax.plot(med, mids, color=bs.SPHERE["hydrosphere"], lw=1.3)
+    ax.set_ylabel("latitude")
+    ax.set_xlabel("water hazard index")
+    ax.set_ylim(-60, 85)
+    ax.axhline(0, color="0.8", lw=0.4)
+    ax.text(0.97, 0.03, "shading spans the 10th to 90th percentile\nwithin each"
+            " band", transform=ax.transAxes, fontsize=6.2, color="0.4",
+            ha="right", va="bottom")
+    return bs.finish(fig, path)
+
+
+def whi_predictors(path):
+    """Which independent predictors explain the water hazard field, and how
+    poorly. The low skill is the result worth showing."""
+    x = extra()
+    imp = json.loads(str(x["whi_importance_json"]))["rf"]
+    names = imp["names"]
+    vals = np.asarray(imp["importance"], dtype=float)
+    keep = vals > 0.001
+    names = [n.replace("_", " ") for n, k in zip(names, keep) if k]
+    vals = vals[keep]
+    order = np.argsort(vals)
+
+    fig, ax = bs.figure(ratio=0.55)
+    ypos = np.arange(len(vals))
+    ax.barh(ypos, vals[order], 0.66, color=bs.SPHERE["hydrosphere"])
+    ax.set_yticks(ypos)
+    ax.set_yticklabels([names[i] for i in order], fontsize=6.2)
+    ax.set_xlabel("share of the explained variation")
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.text(0.97, 0.06,
+            "held out skill on independent predictors: %.2f\n"
+            "with the field's own constituents: %.2f"
+            % (imp["cv_r2_heldout"], imp["cv_r2_with_constituents"]),
+            transform=ax.transAxes, fontsize=6.2, color=bs.RULE, ha="right")
+    return bs.finish(fig, path)
+
+
+def twobox_response(path):
+    """The calibrated model's response to a sudden doubling of carbon dioxide.
+
+    Integrated here with the calibrated parameters, to show the two timescales
+    that make the ocean the place where commitment lives.
+    """
+    x = extra()
+    ecs, gamma = [float(v) for v in x["theta_mean"]]
+    c_s, c_d, f2x = 7.3, 106.0, 3.93
+    lam = f2x / ecs
+
+    n = 600
+    t = np.arange(n)
+    ts, td = np.zeros(n), np.zeros(n)
+    for i in range(1, n):
+        dts = (f2x - lam * ts[i - 1] - gamma * (ts[i - 1] - td[i - 1])) / c_s
+        dtd = gamma * (ts[i - 1] - td[i - 1]) / c_d
+        ts[i] = ts[i - 1] + dts
+        td[i] = td[i - 1] + dtd
+
+    fig, ax = bs.figure(ratio=0.52)
+    ax.plot(t, ts, color=bs.SPHERE["atmosphere"], lw=1.4, label="surface")
+    ax.plot(t, td, color=bs.SPHERE["ocean"], lw=1.4, label="deep ocean")
+    ax.axhline(ecs, color=bs.RULE, lw=0.7, ls=(0, (3, 2)))
+    ax.text(320, ecs + 0.08, "eventual warming", fontsize=6.5, color=bs.RULE)
+
+    i10 = int(np.argmin(np.abs(ts - 0.63 * ecs)))
+    ax.annotate("most of the surface response\narrives within decades",
+                (i10, ts[i10]), textcoords="offset points", xytext=(26, -22),
+                fontsize=6.3, color=bs.RULE,
+                arrowprops=dict(arrowstyle="-", lw=0.5, color=bs.RULE))
+
+    ax.set_xlim(0, n)
+    ax.set_ylim(0, ecs * 1.12)
+    ax.set_xlabel("years after the forcing is applied")
+    ax.set_ylabel("warming (K)")
+    ax.legend(loc="lower right", fontsize=6.5)
+    return bs.finish(fig, path)
+
+
+def posterior_marginals(path):
+    """What calibration did to each parameter: prior against posterior."""
+    x = extra()
+    post = x["post_particles"]
+    w = x["post_weights"] / x["post_weights"].sum()
+    prior = x["prior_particles"]
+    labels = ["equilibrium climate sensitivity (K)",
+              "ocean heat uptake (W m$^{-2}$ K$^{-1}$)"]
+    colours = [bs.SPHERE["atmosphere"], bs.SPHERE["ocean"]]
+
+    fig, axes = plt.subplots(
+        1, 2, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 0.40),
+        gridspec_kw={"wspace": 0.30})
+
+    for j, (ax, lab, col) in enumerate(zip(axes, labels, colours)):
+        lo = min(prior[:, j].min(), post[:, j].min())
+        hi = max(prior[:, j].max(), post[:, j].max())
+        bins = np.linspace(lo, hi, 46)
+        ax.hist(prior[:, j], bins=bins, density=True, color="0.78",
+                edgecolor="none", label="prior")
+        ax.hist(post[:, j], bins=bins, weights=w, density=True, color=col,
+                alpha=0.82, edgecolor="none", label="posterior")
+        ax.set_xlabel(lab, fontsize=7)
+        ax.set_yticks([])
+        ax.spines["left"].set_visible(False)
+        if j == 0:
+            ax.legend(fontsize=6.3, loc="upper right")
+    axes[0].set_ylabel("density", fontsize=7)
+    return bs.finish(fig, path)
+
+
+def posterior_joint(path):
+    """The two parameters together, showing what the ocean constraint did.
+
+    Surface temperature alone cannot separate a sensitive climate that takes up
+    heat quickly from an insensitive one that does not. The joint cloud is what
+    breaking that trade off looks like.
+    """
+    x = extra()
+    post = x["post_particles"]
+    w = x["post_weights"] / x["post_weights"].sum()
+    prior = x["prior_particles"]
+
+    fig, ax = bs.figure(ratio=0.66)
+    ax.scatter(prior[::12, 0], prior[::12, 1], s=1.2, color="0.84",
+               edgecolors="none", label="prior", rasterized=True)
+    size = 4.0 + 900.0 * w
+    ax.scatter(post[:, 0], post[:, 1], s=size, color=bs.SPHERE["ocean"],
+               alpha=0.62, edgecolors="none", label="posterior")
+    ax.set_xlabel("equilibrium climate sensitivity (K)")
+    ax.set_ylabel("ocean heat uptake (W m$^{-2}$ K$^{-1}$)")
+    ax.legend(fontsize=6.5, loc="upper left")
+    ax.text(0.97, 0.04, "marker size is the particle weight",
+            transform=ax.transAxes, fontsize=6.2, color="0.45", ha="right")
+    return bs.finish(fig, path)
+
+
+def threshold_sensitivity(path):
+    """Does the answer depend on where the threshold is put?"""
+    x = extra()
+    years = x["years"]
+    sens = np.atleast_2d(x["sens_haf"])
+    pcts = x["sens_pct"]
+    shades = ["#DCE6EC", "#B4C9D6", "#7FA4B8", "#4A7C95", "#1F4E63"]
+
+    fig, ax = bs.figure(ratio=0.55)
+    for row, pct, col in zip(sens, pcts, shades):
+        ax.plot(years, row, color=col, lw=1.2)
+        ax.annotate("%dth" % int(pct), (2300, row[-1]),
+                    textcoords="offset points", xytext=(4, -2), fontsize=6.3,
+                    color=col, va="center")
+    ax.axvline(2020, color=bs.RULE, lw=0.5, ls=(0, (4, 3)))
+    ax.set_xlim(1750, 2300)
+    ax.set_ylim(0, 1.02)
+    ax.set_xlabel("year")
+    ax.set_ylabel("habitable area fraction")
+    ax.text(0.02, 0.06, "each curve puts the threshold at a different\n"
+            "percentile of the preindustrial field",
+            transform=ax.transAxes, fontsize=6.2, color="0.4")
+    fig.subplots_adjust(right=0.84)
+    return bs.finish(fig, path)
+
+
+def chs_evolution(path):
+    """The composite hazard field at four dates on the middle pathway."""
+    x = extra()
+    dates = (1850, 2020, 2100, 2300)
+    fields = [x["chs_ssp245_%d" % y].astype(float) for y in dates]
+    allv = np.concatenate([f[np.isfinite(f)] for f in fields])
+    vmin, vmax = np.percentile(allv, 1), np.percentile(allv, 99)
+
+    fig, axes = plt.subplots(
+        4, 1, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 1.34),
+        gridspec_kw={"hspace": 0.16})
+    for ax, year, field in zip(axes, dates, fields):
+        mesh = _map_axes(ax, x["lon"], x["lat"], field, bs.HAZARD, vmin, vmax)
+        ax.set_title(str(year), fontsize=7.5, loc="left", pad=2)
+        if ax is not axes[-1]:
+            ax.set_xticklabels([])
+            ax.set_xlabel("")
+    cbar = fig.colorbar(mesh, ax=axes, shrink=0.55, pad=0.02, aspect=26)
+    cbar.set_label("composite hazard", fontsize=7)
+    cbar.ax.tick_params(labelsize=6.5, width=0.5)
+    cbar.outline.set_linewidth(0.5)
+    return bs.finish(fig, path)
+
+
+def water_contribution(path):
+    """What the water hazard term supplies, shown by removing it.
+
+    Upper panel: the composite field at 2100 with the surface water hazard term
+    switched off, leaving climate and ocean alone. Lower panel: the full field.
+    The difference is the geography the hydrosphere contributes.
+    """
+    x = extra()
+    without = x["chs_nowater_2100"].astype(float)
+    withw = x["chs_ssp245_2100"].astype(float)
+    allv = np.concatenate([without[np.isfinite(without)],
+                           withw[np.isfinite(withw)]])
+    vmin, vmax = np.percentile(allv, 1), np.percentile(allv, 99)
+
+    fig, axes = plt.subplots(
+        2, 1, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 0.76),
+        gridspec_kw={"hspace": 0.20})
+    titles = ["climate and ocean only", "with the surface water hazard field"]
+    for ax, field, title in zip(axes, (without, withw), titles):
+        mesh = _map_axes(ax, x["lon"], x["lat"], field, bs.HAZARD, vmin, vmax)
+        ax.set_title(title, fontsize=7.5, loc="left", pad=2)
+    axes[0].set_xticklabels([])
+    cbar = fig.colorbar(mesh, ax=axes, shrink=0.7, pad=0.02, aspect=22)
+    cbar.set_label("composite hazard", fontsize=7)
+    cbar.ax.tick_params(labelsize=6.5, width=0.5)
+    cbar.outline.set_linewidth(0.5)
+    return bs.finish(fig, path)
+
+
+def _toe_map(path, key, label):
+    x = extra()
+    toe = x[key].astype(float)
+    sentinel = 2019.0
+    already = np.isclose(toe, sentinel)
+    future = toe > sentinel
+
+    fig, ax = bs.figure(ratio=0.52)
+    shown = np.where(future, toe, np.nan)
+    mesh = _map_axes(ax, x["lon"], x["lat"], shown, bs.WHEN, 2020, 2300)
+    already_field = np.where(already, 1.0, np.nan)
+    ax.pcolormesh(x["lon"], x["lat"], np.ma.masked_invalid(already_field),
+                  cmap=plt.matplotlib.colors.ListedColormap(["#241016"]),
+                  shading="auto", rasterized=True)
+    land = x["land2d"].astype(bool)
+    never = np.where(land & ~already & ~future, 1.0, np.nan)
+    ax.pcolormesh(x["lon"], x["lat"], np.ma.masked_invalid(never),
+                  cmap=plt.matplotlib.colors.ListedColormap(["#C9C9C4"]),
+                  shading="auto", rasterized=True)
+
+    cbar = fig.colorbar(mesh, ax=ax, shrink=0.82, pad=0.02, aspect=18)
+    cbar.set_label("year of crossing", fontsize=7)
+    cbar.ax.tick_params(labelsize=6.5, width=0.5)
+    cbar.outline.set_linewidth(0.5)
+    ax.set_title(label, fontsize=7.5, loc="left", pad=2)
+    return bs.finish(fig, path)
+
+
+def toe_map_middle(path):
+    """When each place crosses, on the middle pathway."""
+    return _toe_map(path, "toe_ssp245", bs.SSP_LABEL["ssp245"])
+
+
+def toe_map_high(path):
+    """When each place crosses, on the high emissions pathway."""
+    return _toe_map(path, "toe_ssp585", bs.SSP_LABEL["ssp585"])
+
+
+def toe_distribution(path):
+    """How the crossings are spread through time under two pathways."""
+    x = extra()
+    area = None
+    fig, ax = bs.figure(ratio=0.50)
+    for key, ssp in (("toe_ssp245", "ssp245"), ("toe_ssp585", "ssp585")):
+        toe = x[key].astype(float)
+        vals = toe[np.isfinite(toe) & (toe > 2019.5)]
+        ax.hist(vals, bins=np.arange(2020, 2310, 10), histtype="step",
+                color=bs.SSP[ssp], lw=1.3, label=bs.SSP_LABEL[ssp])
+    ax.set_xlabel("decade of crossing")
+    ax.set_ylabel("land cells crossing")
+    ax.set_xlim(2020, 2300)
+    ax.legend(fontsize=6.5)
+    return bs.finish(fig, path)
+
+
+def uncertainty_bars(path):
+    """The three sources of spread, on one axis. The comparison is the point."""
+    m = metrics()
+    we = m["weight_ensemble"]
+    values = [m["scenario_spread_haf_2100"],
+              we["haf_2100_width_weights"],
+              we["haf_2100_width_param_posterior"]]
+    labels = ["emissions\npathway", "how the spheres\nare weighted",
+              "calibrated\nparameters"]
+    colours = ["#A8402F", bs.SPHERE["hydrosphere"], bs.SPHERE["ocean"]]
+
+    fig, ax = bs.figure(ratio=0.50)
+    ypos = np.arange(3)[::-1]
+    ax.barh(ypos, values, 0.55, color=colours)
+    for y, v in zip(ypos, values):
+        ax.text(v + 0.008, y, "%.3f" % v, va="center", fontsize=7,
+                color=bs.RULE)
+    ax.set_yticks(ypos)
+    ax.set_yticklabels(labels, fontsize=7)
+    ax.set_xlim(0, 0.47)
+    ax.set_xlabel("spread in the habitable area fraction at 2100")
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    return bs.finish(fig, path)
+
+
+def tier_decomposition(path):
+    """The two parts of the composite signal, and how they grow apart."""
+    x = extra()
+    years = x["years"]
+    fig, ax = bs.figure(ratio=0.52)
+    for key in ("ssp126", "ssp585"):
+        ax.plot(years, x["tierT_" + key], color=bs.SSP[key], lw=1.3)
+        ax.plot(years, x["tierU_" + key], color=bs.SSP[key], lw=1.0,
+                ls=(0, (3, 2)))
+    ax.axvline(2020, color=bs.RULE, lw=0.5, ls=(0, (4, 3)))
+    ax.set_xlim(1750, 2300)
+    ax.set_xlabel("year")
+    ax.set_ylabel("standardised contribution")
+    ax.text(0.02, 0.92, "solid: the patterned surface warming term\n"
+            "dashed: the spatially uniform ocean and carbon term",
+            transform=ax.transAxes, fontsize=6.3, color="0.4", va="top")
+    for key in ("ssp126", "ssp585"):
+        ax.annotate(bs.SSP_LABEL[key], (2300, x["tierU_" + key][-1]),
+                    textcoords="offset points", xytext=(4, 0), fontsize=6.3,
+                    color=bs.SSP[key], va="center")
+    fig.subplots_adjust(right=0.84)
+    return bs.finish(fig, path)
+
+
+ZOOMS = [
+    ("Western North America", -125, -113, 31, 42),
+    ("Indo Gangetic plain", 67, 92, 20, 34),
+    ("North China Plain", 110, 123, 30, 42),
+    ("Middle East and the Nile", 25, 60, 12, 38),
+]
+
+
+def whi_map_full(path):
+    """The water hazard field at full page size, with regional detail.
+
+    A full page is worth spending on this field because it is the only component
+    of the composite measure that carries real geography, and because the
+    regional structure is invisible at the size of an ordinary text figure.
+    """
+    x = extra()
+    raw = x["whi_raw"].astype(float)
+    land = x["land2d"].astype(bool)
+    field = np.where(land & np.isfinite(raw), raw, np.nan)
+    lon, lat = x["lon"], x["lat"]
+    finite = field[np.isfinite(field)]
+    vmin, vmax = np.percentile(finite, 2), np.percentile(finite, 99)
+
+    fig = plt.figure(figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 1.49))
+    gs = fig.add_gridspec(
+        3, 2, height_ratios=[1.28, 1.0, 1.0], hspace=0.26, wspace=0.16,
+        left=0.10, right=0.90, top=0.985, bottom=0.085)
+
+    ax = fig.add_subplot(gs[0, :])
+    mesh = _map_axes(ax, lon, lat, field, bs.HAZARD, vmin, vmax)
+    ax.set_title("the global field", fontsize=8, loc="left", pad=3)
+
+    for name, x0, x1, y0, y1 in ZOOMS:
+        ax.add_patch(plt.Rectangle(
+            (x0, y0), x1 - x0, y1 - y0, fill=False, edgecolor="#1F3A4D",
+            linewidth=0.7, zorder=6))
+
+    ilon = (lon >= -180) & (lon <= 180)
+    for k, (name, x0, x1, y0, y1) in enumerate(ZOOMS):
+        bx = fig.add_subplot(gs[1 + k // 2, k % 2])
+        sx = (lon >= x0) & (lon <= x1)
+        sy = (lat >= y0) & (lat <= y1)
+        sub = field[np.ix_(sy, sx)]
+        bx.pcolormesh(lon[sx], lat[sy], np.ma.masked_invalid(sub),
+                      cmap=bs.HAZARD, vmin=vmin, vmax=vmax, shading="auto",
+                      rasterized=True)
+        bx.set_aspect("equal")
+        bx.set_title(name, fontsize=7, loc="left", pad=2)
+        bx.tick_params(labelsize=5.8, width=0.4)
+        for spine in bx.spines.values():
+            spine.set_visible(True)
+            spine.set_linewidth(0.5)
+
+    cax = fig.add_axes([0.24, 0.045, 0.52, 0.012])
+    cbar = fig.colorbar(mesh, cax=cax, orientation="horizontal")
+    cbar.set_label("water hazard index", fontsize=7)
+    cbar.ax.tick_params(labelsize=6.3, width=0.5)
+    cbar.outline.set_linewidth(0.5)
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
 FIGURES = {
     "haf_trajectory": haf_trajectory,
     "haf_scenarios": haf_scenarios,
     "loss_bars": loss_bars,
     "chs_map": chs_map,
     "whi_map": whi_map,
+    "whi_map_full": whi_map_full,
     "weights": weights,
     "gmst_fit": gmst_fit,
     "ohc_fit": ohc_fit,
+    "pattern_map": pattern_map,
+    "gmst_paths": gmst_paths,
+    "co2_paths": co2_paths,
+    "ocean_heat_paths": ocean_heat_paths,
+    "carbonate_paths": carbonate_paths,
+    "whi_distribution": whi_distribution,
+    "whi_zonal": whi_zonal,
+    "whi_predictors": whi_predictors,
+    "twobox_response": twobox_response,
+    "posterior_marginals": posterior_marginals,
+    "posterior_joint": posterior_joint,
+    "threshold_sensitivity": threshold_sensitivity,
+    "chs_evolution": chs_evolution,
+    "water_contribution": water_contribution,
+    "toe_map_middle": toe_map_middle,
+    "toe_map_high": toe_map_high,
+    "toe_distribution": toe_distribution,
+    "uncertainty_bars": uncertainty_bars,
+    "tier_decomposition": tier_decomposition,
 }
 
 
@@ -329,11 +898,9 @@ def main():
         path = os.path.join(OUT, name + ".pdf")
         try:
             FIGURES[name](path)
-            size = os.path.getsize(path) / 1024.0
-            print("  %-18s %7.1f kB" % (name, size))
+            print("  %-22s %7.1f kB" % (name, os.path.getsize(path) / 1024.0))
         except Exception as exc:                              # noqa: BLE001
-            print("  %-18s FAILED  %s: %s"
-                  % (name, type(exc).__name__, exc))
+            print("  %-22s FAILED  %s: %s" % (name, type(exc).__name__, exc))
             failed += 1
     return 1 if failed else 0
 
