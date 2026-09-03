@@ -26,6 +26,7 @@ ROOT = os.path.dirname(BOOK)
 # bibliography is listed first so it overrides both manuscript files.
 SOURCES = [
     ("LATEST", os.path.join(BOOK, "references_latest.bib")),
+    ("CRYO", os.path.join(BOOK, "references_cryosphere.bib")),
     ("EH", os.path.join(ROOT, "EH_shallow", "references.bib")),
     ("GWL", os.path.join(ROOT, "sources", "GWL", "bibfile.bib")),
 ]
@@ -90,7 +91,7 @@ def main():
 
     for label, path in SOURCES:
         if not os.path.exists(path):
-            if label == "LATEST":
+            if label in ("LATEST", "CRYO"):
                 print("%-6s (absent, skipping)" % label)
                 continue
             print("missing source: %s" % path, file=sys.stderr)

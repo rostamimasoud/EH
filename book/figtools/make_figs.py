@@ -844,6 +844,103 @@ def whi_map_full(path):
     return path
 
 
+# ---------------------------------------------------------------------------
+# Cryosphere: Antarctic ice shelf cavity thresholds
+#
+# Values are the published continuation results of the companion study on
+# bistability of Antarctic ice shelf cavities. Columns are the two folds of the
+# bistable window in sea ice production (metres per year), and the jump in
+# basal melt rate across the transition (metres per year).
+# ---------------------------------------------------------------------------
+
+CAVITIES = [
+    # name,            lower fold, upper fold, melt jump
+    ("Ross",                 1.67, 29.13,  6.09),
+    ("Getz",                 0.42, 25.38,  8.60),
+    ("Pine Island",          1.04, 20.21, 10.59),
+    ("Riiser Larsen",        1.38, 19.66,  4.46),
+    ("Fimbul",               1.62, 19.55,  4.12),
+    ("Amery",                2.04, 13.41,  3.92),
+    ("Shackleton",           0.54, 13.18,  5.83),
+    ("Larsen C",             1.50, 10.26,  2.82),
+    ("Totten",               0.17,  6.41,  7.43),
+]
+
+
+def cryo_windows(path):
+    """The bistable window and the melt jump for each Antarctic cavity.
+
+    Composed for this book. The published figure places a derived forcing point
+    inside each window; this one ranks the cavities by the width of the window
+    and sets the size of the melt jump beside it, because the argument the book
+    makes concerns how much room there is and how far the state moves when the
+    room runs out.
+    """
+    rows = sorted(CAVITIES, key=lambda r: r[2] - r[1])
+    names = [r[0] for r in rows]
+    lo = np.array([r[1] for r in rows])
+    hi = np.array([r[2] for r in rows])
+    jump = np.array([r[3] for r in rows])
+    y = np.arange(len(rows))
+
+    fig, (ax, bx) = plt.subplots(
+        1, 2, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 0.58),
+        gridspec_kw={"width_ratios": [2.4, 1.0], "wspace": 0.08})
+
+    for i, (a, b) in enumerate(zip(lo, hi)):
+        ax.plot([a, b], [i, i], color=bs.SPHERE["ocean"], lw=3.2,
+                solid_capstyle="butt", alpha=0.75)
+        ax.plot([a], [i], "o", ms=3.0, color=bs.RULE, zorder=4)
+        ax.plot([b], [i], "o", ms=3.0, color="#A8402F", zorder=4)
+    ax.set_yticks(y)
+    ax.set_yticklabels(names, fontsize=6.8)
+    ax.set_xlim(0, 31)
+    ax.set_xlabel("sea ice production at the two folds (m per year)")
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.text(0.98, 0.04, "present day forcing lies inside\nevery window",
+            transform=ax.transAxes, fontsize=6.2, color="0.4", ha="right")
+
+    bx.barh(y, jump, 0.6, color=bs.SPHERE["hydrosphere"], edgecolor="none")
+    for i, v in enumerate(jump):
+        bx.text(v + 0.25, i, "%.1f" % v, va="center", fontsize=6.2,
+                color=bs.RULE)
+    bx.set_yticks(y)
+    bx.set_yticklabels([])
+    bx.set_xlim(0, 13.5)
+    bx.set_xlabel("melt jump (m per year)")
+    bx.spines["left"].set_visible(False)
+    bx.tick_params(axis="y", length=0)
+    return bs.finish(fig, path)
+
+
+def cryo_width_vs_jump(path):
+    """Window width against the size of the jump, one point per cavity.
+
+    A composition that does not appear in the source study. It asks whether the
+    cavities with the most room to spare are also the ones that move least when
+    they go, and the answer is that they are not.
+    """
+    width = np.array([r[2] - r[1] for r in CAVITIES])
+    jump = np.array([r[3] for r in CAVITIES])
+    names = [r[0] for r in CAVITIES]
+
+    fig, ax = bs.figure(ratio=0.62)
+    ax.scatter(width, jump, s=34, color=bs.SPHERE["ocean"], alpha=0.8,
+               edgecolors="white", linewidths=0.6, zorder=3)
+    for x0, y0, n in zip(width, jump, names):
+        ax.annotate(n, (x0, y0), textcoords="offset points", xytext=(5, 3),
+                    fontsize=6.0, color=bs.RULE)
+    ax.set_xlabel("width of the bistable window (m per year)")
+    ax.set_ylabel("melt jump across the transition (m per year)")
+    ax.set_xlim(3, 31)
+    ax.set_ylim(1.5, 12.5)
+    ax.text(0.97, 0.95, "no relationship: a wide margin does not\n"
+            "mean a small consequence", transform=ax.transAxes,
+            fontsize=6.2, color="0.4", ha="right", va="top")
+    return bs.finish(fig, path)
+
+
 FIGURES = {
     "haf_trajectory": haf_trajectory,
     "haf_scenarios": haf_scenarios,
@@ -851,6 +948,8 @@ FIGURES = {
     "chs_map": chs_map,
     "whi_map": whi_map,
     "whi_map_full": whi_map_full,
+    "cryo_windows": cryo_windows,
+    "cryo_width_vs_jump": cryo_width_vs_jump,
     "weights": weights,
     "gmst_fit": gmst_fit,
     "ohc_fit": ohc_fit,
