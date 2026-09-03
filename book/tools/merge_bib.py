@@ -22,11 +22,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BOOK = os.path.dirname(HERE)
 ROOT = os.path.dirname(BOOK)
 
+# Order matters: the first source to define a key wins. The author supplied
+# bibliography is listed first so it overrides both manuscript files.
 SOURCES = [
+    ("LATEST", os.path.join(BOOK, "references_latest.bib")),
     ("EH", os.path.join(ROOT, "EH_shallow", "references.bib")),
     ("GWL", os.path.join(ROOT, "sources", "GWL", "bibfile.bib")),
 ]
 CORRECTIONS = os.path.join(BOOK, "corrections.bib")
+
+# Keys the author's latest bibliography deliberately dropped, which survive only
+# in the older manuscript file, whose identifiers were verified to point at the
+# wrong work, and which nothing in the book cites. Carrying them forward would
+# reintroduce known bad references into the reference list.
+RETIRED = {
+    "bekaert2017centralvalley":
+        "dropped from the author's latest file; doi resolved to an unrelated "
+        "biomass paper and no work with this title exists in Crossref",
+    "sneed2008extensometer":
+        "dropped from the author's latest file and superseded by "
+        "sneed2013deltamendota, sneed2018aqueduct and sneed2020coachella; "
+        "doi resolved to a Kansas water quality report",
+}
 TARGET = os.path.join(BOOK, "references.bib")
 
 ENTRY_START = re.compile(r"^@(\w+)\s*\{\s*([^,\s]+)\s*,", re.MULTILINE)
@@ -69,14 +86,21 @@ def main():
     order = []
     origin = {}
     clashes = []
+    retired_seen = set()
 
     for label, path in SOURCES:
         if not os.path.exists(path):
+            if label == "LATEST":
+                print("%-6s (absent, skipping)" % label)
+                continue
             print("missing source: %s" % path, file=sys.stderr)
             return 1
         found = parse(path)
-        print("%-4s %3d entries  %s" % (label, len(found), os.path.relpath(path, ROOT)))
+        print("%-6s %3d entries  %s" % (label, len(found), os.path.relpath(path, ROOT)))
         for key, etype, raw in found:
+            if key in RETIRED:
+                retired_seen.add(key)
+                continue
             if key in merged:
                 clashes.append((key, origin[key], label))
                 continue
@@ -122,10 +146,16 @@ def main():
     print("merged      %3d unique entries" % len(order))
     print("with doi    %3d (%d without, expected for pre digital era works)"
           % (withdoi, len(order) - withdoi))
+    if retired_seen:
+        print("")
+        print("RETIRED     %3d superseded entries dropped:" % len(retired_seen))
+        for key in sorted(retired_seen):
+            print("   %-30s %s" % (key, RETIRED[key]))
+    print("")
     print("corrected   %3d entries from corrections.bib: %s" % (len(fixed), ", ".join(fixed) if fixed else "none"))
     print("clashes     %3d" % len(clashes))
     for key, kept, dropped in clashes:
-        print("   %-32s kept %s, dropped duplicate from %s" % (key, kept, dropped))
+        print("   %-30s kept %-6s dropped %s" % (key, kept, dropped))
     print("")
     print("written to  %s" % os.path.relpath(TARGET, ROOT))
     return 0

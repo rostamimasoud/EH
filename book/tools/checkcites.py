@@ -57,14 +57,10 @@ ACCEPTED = {
 
 # Mismatches that are real and unresolved. Listed so they are reported loudly
 # every run until someone identifies the intended work. See corrections.bib.
-UNRESOLVED = {
-    "bekaert2017centralvalley":
-        "doi belongs to a different paper and no work with this title exists "
-        "in Crossref under this author",
-    "sneed2008extensometer":
-        "doi belongs to a Kansas water quality report; the intended USGS "
-        "subsidence report has not been identified",
-}
+# Mismatches that are real and unresolved. Empty: both former entries were
+# retired in the merge, since the author's latest bibliography drops them and
+# nothing in the book cites them. See tools/merge_bib.py.
+UNRESOLVED = {}
 
 
 def strip_braces(text):
