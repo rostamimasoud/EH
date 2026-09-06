@@ -39,6 +39,7 @@ METRICS = os.path.join(ROOT, "sources", "EH", "outputs", "metrics.json")
 WHI = os.path.join(ROOT, "sources", "EH", "eh_shallow", "released",
                    "whi_field_0p5deg.npz")
 EXTRA = os.path.join(BOOK, "figures", "book_extra.npz")
+ARCTIC = os.path.join(os.path.dirname(ROOT), "0_paper21_Arctic_Ice", "runs")
 
 _cache = {}
 
@@ -60,6 +61,18 @@ def whi_field():
     if "w" not in _cache:
         _cache["w"] = np.load(WHI)
     return _cache["w"]
+
+
+def arctic(name):
+    """One output file of the Arctic sea ice study, read only."""
+    key = "arctic_" + name
+    if key not in _cache:
+        path = os.path.join(ARCTIC, name + ".json")
+        if not os.path.exists(path):
+            raise SystemExit("missing Arctic output: %s" % path)
+        with open(path, encoding="utf-8") as fh:
+            _cache[key] = json.load(fh)
+    return _cache[key]
 
 
 def extra():
@@ -941,6 +954,141 @@ def cryo_width_vs_jump(path):
     return bs.finish(fig, path)
 
 
+# ---------------------------------------------------------------------------
+# Arctic sea ice: composed from the companion study's model output
+# ---------------------------------------------------------------------------
+
+def arctic_parameter(path):
+    """Everything hangs on one unmeasured number.
+
+    A composition made for this book. The source study reports the branches and
+    the forcing budget in separate figures; putting them on a shared horizontal
+    axis is what shows that the same parameter which decides whether a threshold
+    exists also decides whether it has already been passed.
+    """
+    b = arctic("budget")
+    rows = [e for e in b["entries"]]
+    h = np.array([e["albedo_scale"] for e in rows])
+    frac = np.array([e.get("fraction_applied", np.nan) for e in rows], dtype=float)
+    lo = np.array([e.get("fraction_low", np.nan) for e in rows], dtype=float)
+    hi = np.array([e.get("fraction_high", np.nan) for e in rows], dtype=float)
+
+    bif = arctic("bifurcation")
+    width, jump, hb = [], [], []
+    for br in bif["branches"]:
+        hy = br.get("hysteresis") or {}
+        w = hy.get("width")
+        j = hy.get("jump")
+        if w is not None and j is not None:
+            hb.append(br["albedo_scale"]); width.append(w); jump.append(j)
+    hb = np.array(hb); width = np.array(width); jump = np.array(jump)
+
+    fig, (ax, bx) = plt.subplots(
+        2, 1, figsize=(bs.TEXT_WIDTH, bs.TEXT_WIDTH * 0.86), sharex=True,
+        gridspec_kw={"hspace": 0.14})
+
+    ax.plot(hb, width, "o-", ms=3.4, lw=1.3, color=bs.SPHERE["atmosphere"],
+            label="width of the bistable window")
+    ax2 = ax.twinx()
+    ax2.plot(hb, jump, "s--", ms=3.0, lw=1.1, color="#A8402F",
+             label="drop in late summer thickness")
+    ax2.set_ylabel("thickness drop (m)", fontsize=7, color="#A8402F")
+    ax2.tick_params(axis="y", labelsize=6.5, colors="#A8402F", width=0.5)
+    ax2.spines["right"].set_visible(True)
+    ax2.spines["right"].set_color("#A8402F")
+    ax2.spines["right"].set_linewidth(0.6)
+    ax.set_ylabel("window (W m$^{-2}$)", fontsize=7)
+    ax.set_ylim(0, 2.3)
+    ax2.set_ylim(0, 1.95)
+    ax.axvspan(0.26, 0.55, color="0.92", zorder=0, lw=0)
+    ax.text(0.275, 2.02, "no threshold here", fontsize=6.4, color="0.4")
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, fontsize=6.3, loc="upper left",
+              bbox_to_anchor=(0.0, 0.86))
+
+    ok = np.isfinite(frac)
+    bx.fill_between(h[ok], 100 * lo[ok], 100 * hi[ok],
+                    color=bs.SPHERE["ocean"], alpha=0.18, linewidth=0)
+    bx.plot(h[ok], 100 * frac[ok], "o-", ms=3.4, lw=1.3,
+            color=bs.SPHERE["ocean"])
+    bx.axhline(100, color=bs.RULE, lw=0.7, ls=(0, (3, 2)))
+    bx.text(0.22, 101.5, "all of it already applied", fontsize=6.4,
+            color=bs.RULE)
+    bx.set_ylim(0, 118)
+    bx.set_ylabel("share of the threshold forcing\nalready applied (per cent)",
+                  fontsize=7)
+    bx.set_xlabel("thickness over which the surface darkens as the ice thins (m)")
+    bx.axvspan(0.26, 0.55, color="0.92", zorder=0, lw=0)
+    return bs.finish(fig, path)
+
+
+def arctic_area_mass(path):
+    """Mass goes faster than area, so satellite extent understates the loss."""
+    r = arctic("retreat")
+    st = sorted(r["states"], key=lambda s: s["forcing"])
+    f = np.array([s["forcing"] for s in st])
+    ext = np.array([s["extent_min"] for s in st])
+    vol = np.array([s["volume_min"] for s in st])
+    ext0, vol0 = ext[0], vol[0]
+
+    fig, ax = bs.figure(ratio=0.56)
+    ax.plot(f, 100 * ext / ext0, "o-", ms=3.6, lw=1.4,
+            color=bs.SPHERE["atmosphere"], label="area")
+    ax.plot(f, 100 * vol / vol0, "s-", ms=3.4, lw=1.4,
+            color=bs.SPHERE["ocean"], label="mass")
+
+    i0 = int(np.argmin(np.abs(f - 0.0)))
+    ax.axvline(0, color=bs.RULE, lw=0.6, ls=(0, (4, 3)))
+    ax.annotate("today", (0, 8), textcoords="offset points", xytext=(5, 0),
+                fontsize=6.5, color=bs.RULE)
+    ax.plot([0, 0], [100 * vol[i0] / vol0, 100 * ext[i0] / ext0],
+            color="#A8402F", lw=2.4, solid_capstyle="butt", zorder=5)
+    ax.annotate("a fifth of the area gone,\nnearly a third of the substance",
+                (0, 100 * vol[i0] / vol0), textcoords="offset points",
+                xytext=(14, -6), fontsize=6.4, color="#A8402F")
+
+    ax.set_xlabel("greenhouse forcing relative to today (W m$^{-2}$)")
+    ax.set_ylabel("September ice, per cent of preindustrial")
+    ax.set_xlim(-2.6, 8.4)
+    ax.set_ylim(0, 108)
+    ax.legend(fontsize=6.8, loc="upper right")
+    return bs.finish(fig, path)
+
+
+def arctic_synergy(path):
+    """Where the threshold sits depends on the Atlantic inflow as well.
+
+    The regime boundary in the plane of greenhouse forcing and inflow
+    temperature, recovered from the study's regime map. Drawn as a filled
+    region here rather than as a grid of markers.
+    """
+    rm = arctic("bifurcation")["regime_map"]
+    f = np.asarray(rm["forcing"], dtype=float)
+    ta = np.asarray(rm["atlantic_temperature"], dtype=float)
+    per = np.asarray(rm["perennial_possible"], dtype=float)
+    if per.shape == (len(f), len(ta)):
+        per = per.T
+
+    fig, ax = bs.figure(ratio=0.62)
+    ax.contourf(f, ta, per, levels=[-0.5, 0.5, 1.5],
+                colors=["#F3E4DE", "#DCE8EF"])
+    ax.contour(f, ta, per, levels=[0.5], colors=[bs.RULE], linewidths=1.0)
+
+    ax.text(0.05, 0.72, "perennial ice\npossible", transform=ax.transAxes,
+            fontsize=7.0, color=bs.SPHERE["atmosphere"])
+    ax.text(0.58, 0.72, "perennial ice\ncannot persist", transform=ax.transAxes,
+            fontsize=7.0, color="#8C3A2C")
+    ax.set_xlabel("greenhouse forcing relative to today (W m$^{-2}$)")
+    ax.set_ylabel("temperature of the Atlantic inflow (K above freezing)")
+    ax.text(0.97, 0.05, "each kelvin of inflow warming removes about\n"
+            "0.7 W m$^{-2}$ from the forcing the ice can take",
+            transform=ax.transAxes, fontsize=6.2, color="0.3", ha="right",
+            bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="none",
+                      alpha=0.8))
+    return bs.finish(fig, path)
+
+
 FIGURES = {
     "haf_trajectory": haf_trajectory,
     "haf_scenarios": haf_scenarios,
@@ -949,6 +1097,9 @@ FIGURES = {
     "whi_map": whi_map,
     "whi_map_full": whi_map_full,
     "cryo_windows": cryo_windows,
+    "arctic_parameter": arctic_parameter,
+    "arctic_area_mass": arctic_area_mass,
+    "arctic_synergy": arctic_synergy,
     "cryo_width_vs_jump": cryo_width_vs_jump,
     "weights": weights,
     "gmst_fit": gmst_fit,

@@ -27,6 +27,7 @@ ROOT = os.path.dirname(BOOK)
 SOURCES = [
     ("LATEST", os.path.join(BOOK, "references_latest.bib")),
     ("CRYO", os.path.join(BOOK, "references_cryosphere.bib")),
+    ("ARCTIC", os.path.join(BOOK, "references_arctic.bib")),
     ("EH", os.path.join(ROOT, "EH_shallow", "references.bib")),
     ("GWL", os.path.join(ROOT, "sources", "GWL", "bibfile.bib")),
 ]
@@ -91,7 +92,7 @@ def main():
 
     for label, path in SOURCES:
         if not os.path.exists(path):
-            if label in ("LATEST", "CRYO"):
+            if label in ("LATEST", "CRYO", "ARCTIC"):
                 print("%-6s (absent, skipping)" % label)
                 continue
             print("missing source: %s" % path, file=sys.stderr)
