@@ -91,6 +91,74 @@ def reference_scales(out_ref: dict) -> dict:
     return sc
 
 
+def _standardised_matrix(out_ref: dict, scales: dict | None = None) -> np.ndarray:
+    """[n_time, 6] matrix of the oriented, standardised carried series.
+
+    Columns follow the order of `CHS_VARS`. Uses the common reference `scales`
+    when supplied (so the matrix matches the CHS the pipeline actually scores).
+    """
+    years = out_ref["year"]
+    sc = scales or {}
+    cols = [_standardise(out_ref[k], years, CHS_VARS[k], sc.get(k)) for k in CHS_VARS]
+    return np.column_stack(cols)
+
+
+def objective_weights(out_ref: dict, scales: dict | None = None,
+                      method: str = "critic") -> dict:
+    """Data-driven CHS weights from the reference-run series matrix.
+
+    The six carried variables are strongly collinear (all monotone anthropogenic),
+    so equal weights are a defensible but arbitrary reference. These objective
+    multi-criteria schemes derive a weight vector purely from the reference run --
+    no tuning, fully reproducible -- and down-weight the most redundant variables.
+
+      - ``critic`` (CRITIC, Diakoulaki 1995): w_j proportional to
+        sigma_j * sum_k (1 - r_jk), i.e. contrast (spread) times conflict
+        (1 - correlation). Redundant, highly-correlated variables get less weight.
+      - ``entropy`` (Shannon entropy weight method): w_j proportional to (1 - e_j),
+        e_j = -(1/ln n) sum_i p_ij ln p_ij, on min-max-normalised columns.
+      - ``pca`` (first-principal-component / communality): w_j proportional to
+        |loading_j1| * sqrt(explained_var_1).
+
+    Returns a dict over `CHS_VARS` summing to 1.
+    """
+    names = list(CHS_VARS)
+    X = _standardised_matrix(out_ref, scales)              # [n_time, 6]
+    # min-max normalise each column to [0, 1] (all methods below assume this)
+    lo = X.min(0); rng = np.ptp(X, axis=0)
+    rng = np.where(rng > 0, rng, 1.0)
+    Z = (X - lo) / rng
+
+    method = method.lower()
+    if method == "critic":
+        sd = Z.std(0, ddof=1)
+        R = np.corrcoef(Z, rowvar=False)
+        R = np.where(np.isfinite(R), R, 0.0)
+        conflict = (1.0 - R).sum(0)                        # sum_k (1 - r_jk)
+        c = sd * conflict
+        w = c / c.sum() if c.sum() > 0 else np.full(len(names), 1.0 / len(names))
+    elif method == "entropy":
+        col = Z.sum(0)
+        col = np.where(col > 0, col, 1.0)
+        P = Z / col
+        with np.errstate(divide="ignore", invalid="ignore"):
+            e = -(P * np.where(P > 0, np.log(P), 0.0)).sum(0) / np.log(Z.shape[0])
+        d = 1.0 - e                                        # degree of divergence
+        w = d / d.sum() if d.sum() > 0 else np.full(len(names), 1.0 / len(names))
+    elif method == "pca":
+        Xc = Z - Z.mean(0)
+        C = np.cov(Xc, rowvar=False)
+        evals, evecs = np.linalg.eigh(C)
+        k = int(np.argmax(evals))
+        load = np.abs(evecs[:, k])
+        expl = evals[k] / evals.sum() if evals.sum() > 0 else 1.0
+        c = load * np.sqrt(max(expl, 0.0))
+        w = c / c.sum() if c.sum() > 0 else np.full(len(names), 1.0 / len(names))
+    else:
+        raise ValueError(f"unknown weighting method: {method!r}")
+    return {k: float(w[i]) for i, k in enumerate(names)}
+
+
 def composite_hazard(out: dict, weights: dict | None = None,
                      scales: dict | None = None) -> np.ndarray:
     """Global (area-mean) CHS(t) from an emulator output dict.
@@ -176,5 +244,86 @@ def chs_field(out: dict, year: int, weights: dict | None = None,
     return grid.field_at(float(sT[i]), float(U[i]))
 
 
+def time_of_emergence(out: dict, percentile: float = 90.0,
+                      weights: dict | None = None, scales: dict | None = None,
+                      G=None, start_year: int = 2020):
+    """First year each currently-habitable land cell crosses the threshold tau.
+
+    Emergence is measured relative to `start_year` (default 2020, the present):
+    for land that is still below tau in `start_year`, `toe2d` gives the first year
+    it crosses tau (NaN = never within 2300); land already above tau in
+    `start_year` is set to the sentinel `start_year - 1` (drawn distinctly on the
+    map), and ocean is NaN. This localises *when* -- not just how much --
+    presently-habitable land is projected to be lost, cell by cell.
+
+    Returns (toe2d, summary) with the area-weighted fraction of presently-habitable
+    land that emerges by 2300 and the area-weighted median emergence year over it.
+    """
+    years = out["year"]
+    sT, U = tier_series(out, weights, scales)
+    G = G or grid.build()
+    tau = grid.tau_of(percentile, G)
+    P = G["P"].astype(np.float64)
+    B = G["B"].astype(np.float64)
+    area = G["area"]
+    field = P[:, None] * sT[None, :] + B[:, None] + U[None, :]      # [n_land, n_time]
+    s0 = int(np.argmin(np.abs(years - start_year)))
+    habitable0 = field[:, s0] < tau                                 # habitable today
+    fut = field[:, s0:] >= tau
+    emerges = habitable0 & fut.any(1)
+    first_idx = np.where(emerges, fut.argmax(1) + s0, -1)
+    toe_land = np.full(field.shape[0], np.nan)
+    toe_land[emerges] = years[np.clip(first_idx[emerges], 0, len(years) - 1)]
+    toe_land[~habitable0] = start_year - 1                          # already hazardous
+    if emerges.any():
+        yv = toe_land[emerges]; av = area[emerges]
+        order = np.argsort(yv)
+        cw = np.cumsum(av[order]) / av.sum()
+        med_year = float(np.interp(0.5, cw, yv[order]))
+    else:
+        med_year = float("nan")
+    frac_hab = float(area[habitable0].sum() / area.sum())
+    frac_emerges = float(area[emerges].sum() / max(area[habitable0].sum(), 1e-12))
+    toe2d = np.full(G["land2d"].shape, np.nan, dtype=float)
+    toe2d[G["land2d"]] = toe_land
+    summary = {"start_year": start_year,
+               "frac_present_habitable_land": frac_hab,
+               "frac_of_habitable_that_emerges_by_2300": frac_emerges,
+               "median_emergence_year": med_year}
+    return toe2d, summary
+
+
 def _sigmoid(x):
     return 1.0 / (1.0 + np.exp(-np.clip(x, -50, 50)))
+
+
+def headline_config(datadir=None):
+    """Posterior-mean parameters and headline weights from the last pipeline run.
+
+    The independent evaluation modules call this so that they score the same
+    calibrated configuration the main results use, instead of a value fixed in
+    their own source. Returns ``(None, None)`` when no run output is present, in
+    which case the caller keeps its documented fallback.
+    """
+    import json as _json
+    import os as _os
+    here = _os.path.dirname(_os.path.abspath(__file__))
+    roots = [datadir] if datadir else []
+    roots += [_os.path.join(_os.path.dirname(here), "outputs"),
+              _os.path.join(here, "out")]
+    for r in roots:
+        if not r:
+            continue
+        p = _os.path.join(r, "metrics.json")
+        if _os.path.exists(p):
+            try:
+                with open(p) as fh:
+                    m = _json.load(fh)
+                theta = {k: float(v["mean"]) for k, v in m["posterior"].items()}
+                ow = m["objective_weights"]
+                w = {k: float(v) for k, v in
+                     ow["weights"][ow["primary_method"]].items()}
+                return theta, w
+            except Exception:
+                continue
+    return None, None

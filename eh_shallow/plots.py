@@ -137,6 +137,84 @@ def plot_chs_map(field2d, G, year, path):
     fig.savefig(path, bbox_inches="tight", dpi=300); plt.close(fig)
 
 
+def plot_toe_map(toe2d, G, path, ssp_label="SSP2-4.5", percentile=90):
+    """Time-of-Emergence map: first year each land cell crosses tau.
+
+    Land that never crosses in 1750-2300 is drawn grey; emerging land is coloured
+    by emergence year (earlier = more urgent). Robinson if cartopy is importable.
+    """
+    lon, lat = G["lon"], G["lat"]
+    import copy as _copy
+    from matplotlib.patches import Patch
+    # Continuous scale spans the emergence years only (2050-2300); its dark-purple
+    # top must NOT be reused for the "already lost" cells, or the two are confused.
+    ALREADY_LOST = "#111111"   # near-black: already hazardous at start_year
+    NEVER = "#d9d9d9"          # light grey: never crosses within the horizon
+    cmap = _copy.copy(plt.get_cmap("plasma_r"))  # version-robust (mpl 3.3-3.9)
+    cmap.set_bad(NEVER)                            # never-emerging land shows grey
+    cmap.set_under(ALREADY_LOST)                   # already hazardous in start_year
+    # Start the colour scale above start_year so the colourbar maps only to genuine
+    # emergence years; anything <= start_year falls into the distinct under-colour.
+    vmin, vmax = 2021, 2300
+    try:
+        import cartopy.crs as ccrs
+        fig = plt.figure(figsize=(TWO_COL, 95 * MM))
+        ax = plt.axes(projection=ccrs.Robinson())
+        im = ax.pcolormesh(lon, lat, toe2d, transform=ccrs.PlateCarree(),
+                           cmap=cmap, vmin=vmin, vmax=vmax, shading="auto",
+                           rasterized=True)
+        ax.coastlines(linewidth=0.3)
+        ax.set_global()
+    except Exception:
+        fig, ax = plt.subplots(figsize=(TWO_COL, 95 * MM))
+        im = ax.pcolormesh(lon, lat, toe2d, cmap=cmap, vmin=vmin, vmax=vmax,
+                           shading="auto", rasterized=True)
+        ax.set_xlabel("Longitude"); ax.set_ylabel("Latitude")
+    cb = fig.colorbar(im, ax=ax, shrink=0.6, pad=0.02, extend="min")
+    cb.set_label(f"Year CHS crosses habitability threshold ({ssp_label})")
+    # Explicit legend for the two off-scale categories so neither is read off the
+    # continuous colourbar (whose top is a distinct dark purple = year 2300).
+    ax.legend(handles=[Patch(facecolor=ALREADY_LOST, edgecolor="none",
+                             label="Already lost (≤2020)"),
+                       Patch(facecolor=NEVER, edgecolor="none",
+                             label="Never crosses by 2300")],
+              loc="lower left", frameon=False, fontsize=5,
+              handlelength=1.2, borderaxespad=0.2)
+    fig.savefig(path, bbox_inches="tight", dpi=300); plt.close(fig)
+
+
+def plot_weight_methods(methods, cvars, haf2100, path):
+    """Objective-weighting agreement figure.
+
+    Left: the weight vector each objective method assigns to the six carried
+    variables (grouped bars). Right: HAF-2100 under each weighting. Demonstrates
+    that CRITIC/entropy/PCA and the equal-weight reference give near-identical
+    outcomes -- the collinearity result the paper reports.
+    """
+    order = list(cvars)
+    labels = list(methods.keys())
+    fig, (axw, axh) = plt.subplots(1, 2, figsize=(TWO_COL, 62 * MM),
+                                   gridspec_kw={"width_ratios": [2.4, 1]})
+    x = np.arange(len(order)); nb = len(labels); bw = 0.8 / nb
+    palette = ["k", "#3182bd", "#e6550d", "#31a354", "#756bb1"]
+    for j, m in enumerate(labels):
+        w = [methods[m][k] for k in order]
+        axw.bar(x + (j - (nb - 1) / 2) * bw, w, bw, label=m,
+                color=palette[j % len(palette)])
+    axw.axhline(1.0 / len(order), color="0.5", lw=0.5, ls=":")
+    axw.set_xticks(x); axw.set_xticklabels([c.upper() for c in order], rotation=30,
+                                           ha="right", fontsize=5)
+    axw.set_ylabel("CHS weight"); axw.legend(frameon=False, ncol=2, fontsize=5)
+    hy = [haf2100[m] for m in labels]
+    axh.bar(range(len(labels)), hy, color=[palette[j % len(palette)]
+                                           for j in range(len(labels))])
+    axh.set_xticks(range(len(labels)))
+    axh.set_xticklabels(labels, rotation=30, ha="right", fontsize=5)
+    axh.set_ylabel("HAF 2100 (SSP2-4.5)")
+    axh.set_ylim(0, max(hy) * 1.25 + 1e-3)
+    fig.tight_layout(); fig.savefig(path, bbox_inches="tight"); plt.close(fig)
+
+
 def plot_rf_importances(rf, path):
     """Permutation importances of the Component-1 Random Forest (WHI ~ predictors)."""
     names = rf["names"]; imp = rf["importance"]

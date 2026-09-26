@@ -144,10 +144,11 @@ def run() -> dict:
     baseline_src = "analytic stand-in"
     try:
         from . import whi as _whi
-        if os.path.exists(_whi.WHI_PATH):
+        if _whi.has_whi():
             B_whi, _, _ = _whi.load_whi_field(G)
             grid.set_baseline(B_whi, G)
-            baseline_src = "real gridded WHI"
+            baseline_src = ("real gridded WHI" if os.path.exists(_whi.WHI_PATH)
+                            else "released gridded WHI field")
     except Exception:
         pass
 

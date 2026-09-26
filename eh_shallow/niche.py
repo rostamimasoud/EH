@@ -71,14 +71,16 @@ def run() -> dict:
     except Exception:
         pass
     # reference standardisation for HAF (ssp245 posterior-mean run)
-    out245 = emulator.run_emulator(POSTERIOR, proj, ssp="ssp245")
+    theta, w_head = chs.headline_config()
+    theta = theta or POSTERIOR
+    out245 = emulator.run_emulator(theta, proj, ssp="ssp245")
     scales = chs.reference_scales(out245)
-    sT, U = chs.tier_series(out245, scales=scales)
+    sT, U = chs.tier_series(out245, weights=w_head, scales=scales)
     haf245 = chs.haf_ensemble(sT[None, :], U[None, :], proj, 90)[0]
 
     per_ssp = {}
     for s in data.SSPS:
-        o = emulator.run_emulator(POSTERIOR, proj, ssp=s)
+        o = emulator.run_emulator(theta, proj, ssp=s)
         gmst_anom = data.rebaseline(proj, o["gmst"], ref=MAT_REF)   # vs 1961-90
         unliv = niche_fractions(gmst_anom, G, mat0_land, P_land, area_land)
         per_ssp[s] = {"unlivable": unliv, "niche_hab": 1.0 - unliv,
@@ -108,7 +110,7 @@ def run() -> dict:
 
     return {
         "mat_source": src,
-        "hot_mat_threshold_C": HOT_MAT, "mat_ref": MAT_REF, "posterior": POSTERIOR,
+        "hot_mat_threshold_C": HOT_MAT, "mat_ref": MAT_REF, "posterior": theta,
         "present_unlivable_frac_2015": present_unliv,
         "unlivable_frac_2070_ssp585": unliv_2070_585,
         "xu2020_rcp85_2070_unlivable": XU_RCP85_2070_UNLIVABLE,

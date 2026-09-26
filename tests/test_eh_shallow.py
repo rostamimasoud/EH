@@ -42,6 +42,26 @@ def test_chs_and_haf_in_range():
     assert np.all((h["haf_smooth"] >= 0) & (h["haf_smooth"] <= 1))
 
 
+def test_objective_weights_and_toe():
+    """Objective CHS weights sum to 1 (all methods); ToE map is well-formed."""
+    years = np.arange(1750, 2301)
+    out = emulator.run_emulator({"ecs": 3.7, "gamma": 0.7}, years)
+    scales = chs.reference_scales(out)
+    for m in ("critic", "entropy", "pca"):
+        w = chs.objective_weights(out, scales, method=m)
+        assert set(w) == set(chs.CHS_VARS)
+        assert abs(sum(w.values()) - 1.0) < 1e-9, f"{m} weights must sum to 1"
+        assert all(v >= 0 for v in w.values()), f"{m} weights must be non-negative"
+    # CRITIC should up-weight the least-redundant variable (OHC) above equal 1/6
+    wc = chs.objective_weights(out, scales, method="critic")
+    assert wc["ohc"] > 1.0 / len(chs.CHS_VARS)
+    # time of emergence: fraction in [0,1], median year within the analysis span
+    toe2d, summ = chs.time_of_emergence(out, weights=wc, scales=scales)
+    assert 0.0 <= summ["frac_of_habitable_that_emerges_by_2300"] <= 1.0
+    assert np.isnan(summ["median_emergence_year"]) or (
+        2020 <= summ["median_emergence_year"] <= 2300)
+
+
 def test_prior_sampling_shape():
     rng = np.random.default_rng(0)
     p = emulator.sample_prior(rng, 100)

@@ -45,6 +45,9 @@ SIGMA_AGG = 0.6  # aggregation/Jensen heterogeneity carried in B (sigma_agg)
 # rise; this scale sets how gradually refugia are lost (a stand-in for the
 # tier-(ii) field). sigma_agg is the random sub-grid part within this total.
 B_STD = 1.8
+# Southern limit of the analysis domain; land south of this is the Antarctic ice
+# sheet. Set to None to evaluate the metric over the full Natural Earth land mask.
+ICE_SHEET_LAT = -60.0
 _CACHE = os.path.join(os.path.dirname(__file__), "_cache")
 os.makedirs(_CACHE, exist_ok=True)
 
@@ -116,6 +119,14 @@ def build(res: float = RES, seed: int = 0, sigma_agg: float = SIGMA_AGG):
     lon2d, lat2d = np.meshgrid(lon, lat)
     area2d = np.cos(np.radians(lat))[:, None] * np.ones((1, lon.size))
     land2d, source = _land_mask(lon, lat)
+    # Analysis domain: the ice-free land surface. The Antarctic ice sheet carries
+    # no permanent population and no surface-water hazard observation, so leaving
+    # it in would add a large block of land that is classified habitable by an
+    # imputed value rather than by data. Excluding it also removes the only
+    # substantial gap in the observed water-hazard field.
+    if ICE_SHEET_LAT is not None:
+        land2d = land2d & (lat2d > ICE_SHEET_LAT)
+        source += f"; ice-free domain (south of {abs(ICE_SHEET_LAT):.0f} deg S excluded)"
     P = _temperature_pattern(lat2d, land2d, area2d)
     B = _baseline_field(lat2d, land2d, sigma_agg, seed)
     m = land2d

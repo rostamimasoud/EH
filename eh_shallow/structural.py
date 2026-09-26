@@ -66,7 +66,10 @@ def leave_one_out() -> dict:
     years = np.arange(1750, 2026)
     recon = _reconstructions()
     names = list(recon)
-    gm = _emulate_gmst(POSTERIOR["ecs"], POSTERIOR["gamma"], years)
+    from . import chs as _chs
+    _theta, _ = _chs.headline_config()
+    _theta = _theta or POSTERIOR
+    gm = _emulate_gmst(_theta["ecs"], _theta["gamma"], years)
 
     per = {}
     for n in names:
@@ -91,7 +94,7 @@ def leave_one_out() -> dict:
         "method": "leave-one-reconstruction-out: score the OHC-calibrated emulator "
                   "against independent reconstructions (HadCRUT5 used in calibration; "
                   "GISTEMP, Berkeley Earth held out)",
-        "posterior": POSTERIOR, "cal_window": CAL_WINDOW, "oos_window": OOS_WINDOW,
+        "posterior": _theta, "cal_window": CAL_WINDOW, "oos_window": OOS_WINDOW,
         "sources": {n: recon[n][2] for n in names},
         "per_reconstruction": per,
         "sigma_struct_oos_all_K": float(np.sqrt(np.mean(np.square(oos_all)))),

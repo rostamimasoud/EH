@@ -61,12 +61,25 @@ def main(argv=None):
     mean_theta = {n: summ[n]["mean"] for n in post["names"]}
     out_mean = emulator.run_emulator(mean_theta, proj_years, ssp=args.ssp)
     scales = chs.reference_scales(out_mean)
+    # PRIMARY CHS weighting: objective, data-driven CRITIC weights derived from the
+    # reference run (contrast x conflict), which down-weight the most collinear of
+    # the six carried variables. Entropy and PCA weightings are computed alongside
+    # for corroboration; equal weights are retained as the transparent reference.
+    obj_methods = {
+        "equal": chs._weights(None),
+        "critic": chs.objective_weights(out_mean, scales, "critic"),
+        "entropy": chs.objective_weights(out_mean, scales, "entropy"),
+        "pca": chs.objective_weights(out_mean, scales, "pca"),
+    }
+    w_crit = obj_methods["critic"]
+    print("      CRITIC objective weights: "
+          + ", ".join(f"{k}={w_crit[k]:.3f}" for k in chs.CHS_VARS))
     ens_gmst, ens_ohc, sT_all, U_all = [], [], [], []
     for di in draws:
         out = emulator.run_emulator(post["theta"][di], proj_years, ssp=args.ssp)
         ens_gmst.append(data.rebaseline(proj_years, out["gmst"]))
         ens_ohc.append(data.rebaseline(proj_years, out["ohc"], ref=data.OHC_REF_PERIOD))
-        sT, U = chs.tier_series(out, scales=scales)   # tier-(i) driver + tier-(iii) uniform
+        sT, U = chs.tier_series(out, weights=w_crit, scales=scales)  # CRITIC-weighted
         sT_all.append(sT)
         U_all.append(U)
     ens_gmst = np.array(ens_gmst)
@@ -95,7 +108,7 @@ def main(argv=None):
           + (f" ({whi_cov*100:.0f}% land coverage)" if whi_cov else ""))
     ens_haf = chs.haf_ensemble(np.array(sT_all), np.array(U_all), proj_years,
                                percentile=90)
-    pctile_sens = chs.haf_percentile_sensitivity(out_mean, scales=scales)
+    pctile_sens = chs.haf_percentile_sensitivity(out_mean, weights=w_crit, scales=scales)
 
     # weight-ENSEMBLE HAF (Major-1 demonstration): absent the learned RF/WHI
     # weights, span the simplex of weightings over the carried CHS variables and
@@ -142,22 +155,118 @@ def main(argv=None):
     plots.plot_haf(proj_years, ens_haf, os.path.join(args.outdir, "haf.pdf"),
                    pctile_sens=pctile_sens)
     plots.plot_posterior(post, os.path.join(args.outdir, "posterior.pdf"))
-    plots.plot_chs_map(chs.chs_field(out_mean, 2100, scales=scales), G, year=2100,
+    plots.plot_chs_map(chs.chs_field(out_mean, 2100, weights=w_crit, scales=scales),
+                       G, year=2100,
                        path=os.path.join(args.outdir, "chs_map_2100.pdf"))
     # multi-SSP scenario spread (sigma_scenario) at the posterior mean, on the
     # SAME (ssp245-referenced) standardisation so the scenarios are comparable
-    scen_gmst, scen_haf = {}, {}
+    scen_gmst, scen_haf, scen_out, scen_drivers = {}, {}, {}, {}
     for s in data.SSPS:
         o = emulator.run_emulator(mean_theta, proj_years, ssp=s)
+        scen_out[s] = o
         scen_gmst[s] = data.rebaseline(proj_years, o["gmst"])
-        sT_s, U_s = chs.tier_series(o, scales=scales)
+        sT_s, U_s = chs.tier_series(o, weights=w_crit, scales=scales)
+        scen_drivers[s] = (sT_s, U_s)
         scen_haf[s] = chs.haf_ensemble(sT_s[None, :], U_s[None, :], proj_years, 90)[0]
     plots.plot_haf_scenarios(proj_years, scen_haf,
                              os.path.join(args.outdir, "haf_scenarios.pdf"))
     plots.plot_haf_weight_ensemble(proj_years, haf_weights, haf_equal,
                                    os.path.join(args.outdir, "haf_weight_ensemble.pdf"))
 
+    # NEW RESULT (i): Time-of-Emergence maps -- first year each land cell crosses
+    # the habitability threshold -- under a middle and a high-emission pathway.
+    toe_summary, toe_fields = {}, {}
+    _toe_plot = {"ssp245": "SSP2-4.5", "ssp585": "SSP5-8.5"}
+    for s in data.SSPS:
+        toe2d, toe_summ = chs.time_of_emergence(scen_out[s], weights=w_crit,
+                                                scales=scales, G=G)
+        toe_summary[s] = toe_summ
+        toe_fields[s] = toe2d
+        if s in _toe_plot:
+            plots.plot_toe_map(toe2d, G,
+                               os.path.join(args.outdir, f"toe_map_{s}.pdf"),
+                               ssp_label=_toe_plot[s])
+
+    # NEW RESULT (iii): objective-weighting agreement -- HAF-2100 under each of the
+    # four weightings (equal / CRITIC / entropy / PCA), on the common scale.
+    i2100 = proj_years == 2100
+    haf2100_by_method = {}
+    for m, wd in obj_methods.items():
+        sT_m, U_m = chs.tier_series(out_mean, weights=wd, scales=scales)
+        h = chs.haf_ensemble(sT_m[None, :], U_m[None, :], proj_years, 90)[0]
+        haf2100_by_method[m] = float(h[i2100][0])
+    plots.plot_weight_methods(obj_methods, list(chs.CHS_VARS), haf2100_by_method,
+                              os.path.join(args.outdir, "weight_methods.pdf"))
+
+    # NEW RESULT (ii)+(iv): committed-vs-avoidable habitable-land loss (million km2)
+    # and the peak decadal rate of loss, per scenario, from the CRITIC-weighted HAF.
+    # Area of the analysis domain (ice-free land), from the grid itself rather
+    # than a fixed constant, so areas stay consistent with the mask in use.
+    EARTH_SURFACE_MKM2 = 510.1
+    EARTH_LAND_MKM2 = G["land_area_frac"] * EARTH_SURFACE_MKM2
+    # habitable land is HAF * total land; loss vs the 1750-1800 baseline HAF (~0.90)
+    haf_med_traj = np.percentile(ens_haf, 50, axis=0)
+    haf_pi = float(np.mean(haf_med_traj[(proj_years >= 1750) & (proj_years <= 1800)]))
+    haf_2020_med = float(haf_med_traj[proj_years == 2020][0])
+    committed_mkm2 = (haf_pi - haf_2020_med) * EARTH_LAND_MKM2   # already locked in
+    avoidable = {}
+    peak_rate = {}
+    for s in data.SSPS:
+        h = scen_haf[s]
+        h2100 = float(h[proj_years == 2100][0])
+        # pathway-avoidable additional loss from 2020 to 2100 (vs holding at 2020)
+        avoidable[s] = {
+            "haf_2100": h2100,
+            "additional_loss_2020_2100_mkm2": (haf_2020_med - h2100) * EARTH_LAND_MKM2,
+            "total_loss_vs_PI_2100_mkm2": (haf_pi - h2100) * EARTH_LAND_MKM2,
+        }
+        # peak decadal rate of habitable-land loss (-dHAF/dt over 10-yr windows)
+        yrs = proj_years
+        dec = np.arange(2020, 2301, 10)
+        hv = np.interp(dec, yrs, h)
+        drate = -(np.diff(hv))              # loss per decade (fraction)
+        k = int(np.argmax(drate))
+        peak_rate[s] = {
+            "peak_decadal_loss_frac": float(drate[k]),
+            "peak_decadal_loss_mkm2": float(drate[k] * EARTH_LAND_MKM2),
+            "decade_start": int(dec[k]),
+        }
+
     print("[5/5] metrics.json")
+    # Persist every array the publication figures need, so the figure layer can be
+    # rebuilt without repeating the calibration.
+    _b2d = np.full(G["land2d"].shape, np.nan, dtype=float)
+    _b2d[G["land2d"]] = G["B"]
+    _p2d = np.full(G["land2d"].shape, np.nan, dtype=float)
+    _p2d[G["land2d"]] = G["P"]
+    dump = {
+        "years": proj_years, "lon": G["lon"], "lat": G["lat"],
+        "land2d": G["land2d"], "B2d": _b2d, "P2d": _p2d,
+        "tau": grid.tau_of(90.0, G),
+        "ens_gmst": ens_gmst, "ens_ohc": ens_ohc, "ens_haf": ens_haf,
+        "haf_weights": haf_weights, "haf_equal": haf_equal,
+        "obs_gmst_year": oy, "obs_gmst": og,
+        "calib_window": np.asarray(post["calib_window"]),
+        "theta": post["theta"], "post_weights": post["weights"],
+        "theta_names": np.asarray(post["names"], dtype=object),
+        "chs2100": chs.chs_field(out_mean, 2100, weights=w_crit, scales=scales),
+        "chs2020": chs.chs_field(out_mean, 2020, weights=w_crit, scales=scales),
+    }
+    for s in data.SSPS:
+        dump[f"haf_{s}"] = scen_haf[s]
+        dump[f"gmst_{s}"] = scen_gmst[s]
+        dump[f"sT_{s}"], dump[f"U_{s}"] = scen_drivers[s]
+    dump["weights_critic"] = np.asarray([w_crit[k] for k in chs.CHS_VARS])
+    dump["weight_vars"] = np.asarray(list(chs.CHS_VARS), dtype=object)
+    for s, f in toe_fields.items():
+        dump[f"toe_{s}"] = f
+    for p, h in (pctile_sens or {}).items():
+        dump[f"pctile_{p}"] = h
+    if post["obs_ohc"] is not None:
+        ohy, ohv, ohsd = post["obs_ohc"]
+        dump["obs_ohc_year"], dump["obs_ohc"], dump["obs_ohc_sd"] = ohy, ohv, ohsd
+        dump["ohc_window"] = np.asarray(post["ohc_window"])
+    np.savez_compressed(os.path.join(args.outdir, "figdata.npz"), **dump)
     # out-of-sample (1981-2020) GMST skill of the posterior-mean run
     val = (oy >= 1981) & (oy <= 2020)
     gm_mean = data.rebaseline(proj_years, out_mean["gmst"])
@@ -250,6 +359,22 @@ def main(argv=None):
             "haf_2100_width_param_posterior": float(
                 np.percentile(haf_post_2100, 95) - np.percentile(haf_post_2100, 5)),
         },
+        "objective_weights": {
+            "primary_method": "critic",
+            "weights": obj_methods,
+            "haf_2100_by_method": haf2100_by_method,
+            "haf_2100_range_across_methods": float(
+                max(haf2100_by_method.values()) - min(haf2100_by_method.values())),
+        },
+        "committed_vs_avoidable": {
+            "domain_land_million_km2": EARTH_LAND_MKM2,
+            "haf_preindustrial": haf_pi,
+            "haf_2020": haf_2020_med,
+            "committed_loss_by_2020_million_km2": committed_mkm2,
+            "by_scenario_2100": avoidable,
+        },
+        "peak_loss_rate": peak_rate,
+        "time_of_emergence": toe_summary,
         "config": {"ssp": args.ssp, "n_particles": args.n_particles,
                    "n_temps": args.n_temps, "seed": args.seed},
     }
